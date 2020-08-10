@@ -68,7 +68,11 @@ def get_interface(plot_figure,i=0):
             return div
 
         def SliderVal(self,x):
-          return str(np.round(x,3))
+
+          if isinstance(x,np.float64):
+            return str(np.round(x,3))
+
+          return str(x)
 
 
         def connect_object(self,connect,function):
@@ -418,45 +422,6 @@ def get_interface(plot_figure,i=0):
 
     return app,main
 
-#if __name__ == '__main__':
-#    def funfig(obj): # dummy function
-#        xs = np.linspace(0.,10.,300) # xgrid
-#        # get the value of the slider
-#        ys = np.cos(xs*obj.get_slider("k") + obj.get_slider("phi")) 
-#        ys = ys + float(obj.get_text("dy")) # shift the values
-#
-#
-##        print("I drew")
-#        fig = plt.figure(obj.figure.number) # initialize figure
-#        fig.clear()
-#        plt.plot(xs,ys,c=obj.get_combobox("c")) # plot data
-#        plt.ylim([-2,2])
-#        return fig 
-#
-#    app,main = get_interface(funfig) # get the interface
-#
-#    ks = np.linspace(1.0,3.0,50) # wavevectors
-#    ps = np.linspace(0.0,2.0,50)*np.pi # phases
-#
-#    main.add_slider(label="Wavevector",key="k",vs=ks)#,columnSpan=1)
-#
-# 
-##    main.add_slider(label="Useless slider",key="us",vs=ks,next_row=False)
-#
-#    main.add_slider(label="Phi",key="phi",vs=ps)
-#
-#    main.add_text(label="Shift",key="dy",text="0.0",columnSpan=1)
-#
-#    main.add_combobox(["red","blue","black"],label="Color",key="c",next_row=False)
-#
-#
-#
-#    main.plot()
-#
-#    main.show()
-#
-#
-#    sys.exit(app.exec_())
 
 
 class Figure:
@@ -516,3 +481,47 @@ class Figure:
 
 
 
+if __name__ == '__main__':
+
+  def funfig(obj,Fig,ax): 
+  
+  
+    xs = np.linspace(0.,10.,300) # xgrid
+  
+  
+    # get the value of the slider
+    ys = np.cos(xs*obj.get_slider("k") + obj.get_slider("phi")) 
+  
+    ys = ys + float(obj.get_text("dy")) # shift the values
+  
+  
+    ax.plot(xs,ys,c=obj.get_combobox("c")) # plot data
+  
+    ax.set_ylim([-2,2])
+  
+  
+  fig = Figure(funfig) # initialize figure instance
+  
+  
+  ks = np.linspace(1.0,3.0,50) # wavevectors
+  ps = np.linspace(0.0,2.0,50)*np.pi # phases
+  
+  
+  fig.add_slider(label="Wavevector",key="k",vs=ks)#,columnSpan=1)
+  
+  #  main.add_slider(label="Useless slider",key="us",vs=ks,next_row=False)
+  
+  fig.add_slider(label="Phi",key="phi",vs=ps)
+  
+  fig.add_text(label="Shift",key="dy",text="0.0",columnSpan=1)
+  
+  fig.add_combobox(["red","blue","black"],label="Color",key="c",next_row=False)
+  
+  
+  
+  
+  
+  fig.show()
+  
+  
+  
