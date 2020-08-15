@@ -2,14 +2,13 @@ import numpy as np
 import sys,os
 
 from PyQt5.QtCore import Qt
-
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QDialog, QApplication, QVBoxLayout, QGridLayout
-
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 
+#
 
 def get_interface(plot_figure,i=0):
     """Return an object that plots stuff"""
@@ -101,7 +100,13 @@ def get_interface(plot_figure,i=0):
        
             return key 
 
-        def implement_newrow(self,next_row,vdiv,columnSpan):
+        def implement_newrow(self,next_row,vdiv,columnSpan,extra_space=0):
+
+            if next_row==False:
+              needed_space = vdiv + max(1,columnSpan) + extra_space 
+
+              if self.column + needed_space >= 16:
+                next_row=True
 
             if next_row:
               self.row += 1 
@@ -157,7 +162,7 @@ def get_interface(plot_figure,i=0):
  
             self.connect_object(combo.currentTextChanged.connect,function)
 
-            columnSpan = self.implement_newrow(next_row,vdiv,columnSpan)
+            columnSpan = self.implement_newrow(next_row,vdiv,columnSpan,label is not None)
 
             self.add_label(label)
 
@@ -198,7 +203,7 @@ def get_interface(plot_figure,i=0):
  
             self.connect_object(slider.valueChanged.connect,function)
 
-            columnSpan = self.implement_newrow(next_row,vdiv,columnSpan)
+            columnSpan = self.implement_newrow(next_row,vdiv,columnSpan,(label is not None)+1)
 
             self.add_label(label)
 
@@ -238,7 +243,7 @@ def get_interface(plot_figure,i=0):
 
             self.connect_object(le.editingFinished.connect,function)
 
-            columnSpan = self.implement_newrow(next_row,vdiv,columnSpan)
+            columnSpan = self.implement_newrow(next_row,vdiv,columnSpan,label is not None)
 
             self.add_label(label,max_width)
 
@@ -268,7 +273,7 @@ def get_interface(plot_figure,i=0):
 
             self.connect_object(box.stateChanged.connect,function)
 
-            columnSpan = self.implement_newrow(next_row,vdiv,columnSpan)
+            columnSpan = self.implement_newrow(next_row,vdiv,columnSpan,label is not None)
 
             self.add_label(label,max_width)
 
@@ -292,6 +297,7 @@ def get_interface(plot_figure,i=0):
         def add_button(self,function,label=None,key=None,next_row=True,columnSpan=-1,vdiv=False,max_width=True):
 
             btn = QtWidgets.QPushButton(label,objectName=self.check_key(key,label))
+
 
             self.connect_object(btn.clicked.connect,function)
 
@@ -329,7 +335,7 @@ def get_interface(plot_figure,i=0):
 
             
 
-            self.add_combobox(['pdf']+list(map(str,range(200,601,100))),label="Higher resolution",key="save_justfig",next_row=False,function=None,vdiv=True)
+            self.add_combobox(['No','pdf']+list(map(str,range(200,601,100))),label="Higher resolution",key="save_justfig",next_row=False,function=None,vdiv=True)
  
 
             self.add_button(self.set_savepath_minus,label="Fig.nr --",key="save_decrease",next_row=False,vdiv=True)
@@ -346,7 +352,7 @@ def get_interface(plot_figure,i=0):
 
             folder = os.getcwd() + "/pyqt_figures/"  
 
-            path = folder + fn +".png"
+            path = folder + fn 
 
             if os.path.isdir(folder)==False:
 
@@ -364,7 +370,7 @@ def get_interface(plot_figure,i=0):
 
             fn = self.get_text("save_path")
 
-            isfiles = any([os.path.exists(fn+e) for e in ["","_plot.pdf","_plot.png"]])
+            isfiles = any([os.path.exists(fn+e) for e in ["_pyqt.png","_highres.pdf","_highres.png"]])
 
             replace = self.get_checkbox("save_replace")
 
@@ -388,26 +394,31 @@ def get_interface(plot_figure,i=0):
 
         def save_file(self):
 
-            fn = self.get_text("save_path")
+            fn = self.get_text("save_path") # without extension
 
-            isfile = os.path.exists(fn)
+#            isfile = os.path.exists(fn)
 
             screen = QApplication.primaryScreen()
 
             screenshot = screen.grabWindow( self.winId() )
 
-            screenshot.save(fn,'png')
+#            screenshot = screenshot.scaledToWidth(2000)
+ 
+            screenshot.save(fn+"_pyqt.png",'png')	#,quality=100)
 
-            print("Files saved:",fn)
-             
+ 
             justfig = self.get_combobox("save_justfig")
 
-            if "pdf" in justfig:
+             
+            if justfig != "No":
+              if "pdf" in justfig:
+  
+                self.figure.savefig(fn+'_highres.pdf',format='pdf')
+  
+              else:
+                self.figure.savefig(fn+'_highres.png',dpi=int(justfig),format='png') 
 
-              self.figure.savefig(fn+'_plot.pdf',format='pdf')
-
-            else:
-              self.figure.savefig(fn+'_plot.png',dpi=int(justfig),format='png') 
+            print("File(s) saved:",fn)
 
             self.update_savebutton()
 
@@ -512,7 +523,13 @@ if __name__ == '__main__':
   #  main.add_slider(label="Useless slider",key="us",vs=ks,next_row=False)
   
   fig.add_slider(label="Phi",key="phi",vs=ps)
-  
+
+#  fig.add_slider(label="Phi2",key="phi2",vs=ps,next_row=True,columnSpan=10)
+#  
+#  fig.add_text(label="Shift2",key="dy2",text="0.0",columnSpan=1,next_row=False)
+#
+#  fig.add_text(label="Shift3",key="dy3",text="0.0",columnSpan=2,next_row=False,vdiv=True)
+
   fig.add_text(label="Shift",key="dy",text="0.0",columnSpan=1)
   
   fig.add_combobox(["red","blue","black"],label="Color",key="c",next_row=False)
