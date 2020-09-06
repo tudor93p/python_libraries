@@ -1,16 +1,20 @@
 import numpy as np
 import sys,os
+import json
+
 
 from PyQt5.QtCore import Qt
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QDialog, QApplication, QVBoxLayout, QGridLayout
+
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+
 import matplotlib.pyplot as plt
 
 #
 
-def get_interface(plot_figure,i=0):
+def get_interface(plot_figure,remember_config=False,i=0):
     """Return an object that plots stuff"""
     class Window(QDialog):
         def __init__(self, parent=None):
@@ -23,6 +27,7 @@ def get_interface(plot_figure,i=0):
 #            self.button.clicked.connect(self.plot)
             # set the layout
             layout = QGridLayout()
+
             self.row = 1
             self.column = 0
             self.layout = layout
@@ -34,7 +39,7 @@ def get_interface(plot_figure,i=0):
             self.min_width=90
             self.slidertext = {}
             self.figure_number = 0 
-          
+
 
         def plot(self):
             '''Plot the figure'''
@@ -52,6 +57,8 @@ def get_interface(plot_figure,i=0):
 
             self._dynamic_ax.figure.canvas.draw()
 
+            if remember_config:
+                self.getwrite_config()
 
         def update_plot(self):
 
@@ -148,6 +155,55 @@ def get_interface(plot_figure,i=0):
             if min_width:
               widget.setMinimumWidth(self.min_width)
 
+        def config_file(self):
+
+            return os.getcwd() + "/pyqt_config.json"
+
+        def readset_config(self):
+
+            try:
+                with open(self.config_file(),"r") as f:
+                    self.set_config(json.load(f))
+            except FileNotFoundError:
+                print("Could not load pyqt configuration file.")
+                pass
+
+        def getwrite_config(self):
+
+            with open(self.config_file(),"w") as f:
+                json.dump(self.current_config(),f)
+
+
+        def current_config(self):
+
+            status = dict()
+
+            status["checkbox"] = {c.objectName():c.isChecked() for c in self.findChildren(QtWidgets.QCheckBox)}
+
+
+            status["combobox"] = {c.objectName():c.currentIndex() for c in self.findChildren(QtWidgets.QComboBox)}
+
+            status["slider"] = {c.objectName():c.value() for c in self.findChildren(QtWidgets.QSlider)}
+
+            status["text"] = {c.objectName():c.text() for c in self.findChildren(QtWidgets.QLineEdit)}
+
+            return status
+        
+        def set_fun(self,type_):
+
+            return {"checkbox":self.set_checkbox,"combobox":self.set_combobox,"slider":self.set_slider,"text":self.set_text}[type_]
+
+        def set_config(self,status):
+
+            for (type_,state_) in status.items():
+
+                f = self.set_fun(type_)
+
+                for item in state_.items():
+
+                    f(*item)
+                
+
 
 	# ----------------------------------------- #
 	# -------------- combo box ---------------- #
@@ -173,7 +229,9 @@ def get_interface(plot_figure,i=0):
             obj = self.findChild(QtWidgets.QComboBox,name)
             return obj.currentText()
 
-
+        def set_combobox(self,name,v):
+            """Get the value of a combobox"""
+            self.findChild(QtWidgets.QComboBox,name).setCurrentIndex(v)
 
 	# ----------------------------------------- #
 	# -------------- slider ------------------- #
@@ -213,6 +271,12 @@ def get_interface(plot_figure,i=0):
 
             self.setLayout(self.layout)
 
+
+
+
+        def set_slider(self,name,v):
+
+            self.findChild(QtWidgets.QSlider,name).setValue(v)
 
         def get_slider(self,name,index=False):
             """Get the value of a slider"""
@@ -281,6 +345,10 @@ def get_interface(plot_figure,i=0):
 
             self.setLayout(self.layout)
 
+        def set_checkbox(self,name,state):
+
+            self.findChild(QtWidgets.QCheckBox,name).setChecked(state)
+
 
         def get_checkbox(self,name):
             """Get the state of a checkbox"""
@@ -335,7 +403,9 @@ def get_interface(plot_figure,i=0):
 
             
 
-            self.add_combobox(['No','pdf']+list(map(str,range(200,601,100))),label="Higher resolution",key="save_justfig",next_row=False,function=None,vdiv=True)
+            resolutions = [200,400,800,1600]
+
+            self.add_combobox(['No','pdf']+list(map(str,resolutions)),label="Higher resolution",key="save_justfig",next_row=False,function=None,vdiv=True)
  
 
             self.add_button(self.set_savepath_minus,label="Fig.nr --",key="save_decrease",next_row=False,vdiv=True)
@@ -438,7 +508,7 @@ def get_interface(plot_figure,i=0):
 class Figure:
 
 
-  def __init__(self,funfig,nrows=1,ncols=1,tight=True,**kwargs):
+  def __init__(self,funfig,nrows=1,ncols=1,tight=True,remember_config=False,**kwargs):
 
 
     def funfig_(obj):
@@ -451,14 +521,25 @@ class Figure:
         fig_.tight_layout(h_pad=0.1,w_pad=0.1) # adjust axis
       return fig_
     
-    self.app,self.main = get_interface(funfig_)
+    self.app,self.main = get_interface(funfig_,remember_config)
 
+    self.remember_config = remember_config
 
   def show(self):  
+
+    if self.remember_config:
+
+        self.main.readset_config()
+
     self.main.plot()
+
+
     self.main.show()
+
+
     sys.exit(self.app.exec_())
 
+    
 
   def add_slider(self,*args,**kwargs):
 
@@ -478,14 +559,12 @@ class Figure:
 
   def add_combobox(self,*args,**kwargs):
 
-
     if self.main.findChild(QtWidgets.QComboBox,kwargs["key"]) is None:
  
       self.main.add_combobox(*args,**kwargs)
 
 
   def add_checkbox(self,*args,**kwargs):
-
     if self.main.findChild(QtWidgets.QCheckBox,kwargs["key"]) is None:
 
       self.main.add_checkbox(*args,**kwargs)
@@ -511,7 +590,7 @@ if __name__ == '__main__':
     ax.set_ylim([-2,2])
   
   
-  fig = Figure(funfig) # initialize figure instance
+  fig = Figure(funfig,remember_config=True) # initialize figure instance
   
   
   ks = np.linspace(1.0,3.0,50) # wavevectors
