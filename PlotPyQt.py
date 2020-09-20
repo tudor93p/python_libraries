@@ -109,10 +109,11 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
         def implement_newrow(self,next_row,vdiv,columnSpan,extra_space=0):
 
+            
             if next_row==False:
               needed_space = vdiv + max(1,columnSpan) + extra_space 
 
-              if self.column + needed_space >= 16:
+              if self.column + needed_space > 15:
                 next_row=True
 
             if next_row:
@@ -120,11 +121,14 @@ def get_interface(plot_figure,remember_config=False,i=0):
               self.column = 0 
 
             else:
-              columnSpan = max(1,columnSpan)
-
+                
               if vdiv:
                 self.layout.addWidget(self.Vdiv(),self.row,self.column)
                 self.column +=1
+
+            
+            if columnSpan < 0:
+              return 15 - self.column - extra_space 
 
             return columnSpan 
 
@@ -210,7 +214,7 @@ def get_interface(plot_figure,remember_config=False,i=0):
 	# ----------------------------------------- #
 
 
-        def add_combobox(self,cs,label=None,key=None,next_row=True,columnSpan=-1,function="passive",vdiv=False):
+        def add_combobox(self,cs,label=None,key=None,next_row=False,columnSpan=1,function="passive",vdiv=False):
 
             combo = QtWidgets.QComboBox(objectName=self.check_key(key,label))
 
@@ -239,7 +243,7 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
         def add_slider(self,key=None,
                 label=None,vs=range(100),v0=0,
-                next_row=True,columnSpan=-1,function="passive",vdiv=False):
+                next_row=False,columnSpan=-1,function="passive",vdiv=False):
 
 
             key = self.check_key(key,label)
@@ -262,6 +266,7 @@ def get_interface(plot_figure,remember_config=False,i=0):
             self.connect_object(slider.valueChanged.connect,function)
 
             columnSpan = self.implement_newrow(next_row,vdiv,columnSpan,(label is not None)+1)
+
 
             self.add_label(label)
 
@@ -299,7 +304,7 @@ def get_interface(plot_figure,remember_config=False,i=0):
 	# ----------- line edit (text) ------------ #
 	# ----------------------------------------- #
 
-        def add_text(self,key=None,label=None,text="",columnSpan=-1,next_row=True,max_width=True,min_width=False,vdiv=False,function="passive"):
+        def add_text(self,key=None,label=None,text="",columnSpan=1,next_row=False,max_width=True,min_width=False,vdiv=False,function="passive"):
 
             le = QtWidgets.QLineEdit(objectName=self.check_key(key,label))
 
@@ -329,7 +334,7 @@ def get_interface(plot_figure,remember_config=False,i=0):
 	# ----------------------------------------- #
 
 
-        def add_checkbox(self,label=None,key=None,next_row=True,columnSpan=-1,max_width=True,function="passive",vdiv=False,status=False):
+        def add_checkbox(self,label=None,key=None,max_width=True,function="passive",vdiv=False,next_row=False,status=False):
 
             box = QtWidgets.QCheckBox(objectName=self.check_key(key,label))
 
@@ -337,11 +342,11 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
             self.connect_object(box.stateChanged.connect,function)
 
-            columnSpan = self.implement_newrow(next_row,vdiv,columnSpan,label is not None)
+            columnSpan = self.implement_newrow(next_row,vdiv,1,label is not None)
 
             self.add_label(label,max_width)
 
-            self.add_widget(box,columnSpan,max_width)
+            self.add_widget(box,1,max_width)
 
             self.setLayout(self.layout)
 
@@ -362,7 +367,7 @@ def get_interface(plot_figure,remember_config=False,i=0):
 	# ------------- button -------------------- #
 	# ----------------------------------------- #
 
-        def add_button(self,function,label=None,key=None,next_row=True,columnSpan=-1,vdiv=False,max_width=True):
+        def add_button(self,function,label=None,key=None,next_row=False,columnSpan=1,vdiv=False,max_width=True):
 
             btn = QtWidgets.QPushButton(label,objectName=self.check_key(key,label))
 
@@ -382,11 +387,11 @@ def get_interface(plot_figure,remember_config=False,i=0):
         def add_functionalities(self):
 
 
-            self.add_button(self.plot,label="Update plot",key="update",columnSpan=1)
+            self.add_button(self.plot, label="Update plot", key="update", next_row=True)
 
 
 
-            self.add_checkbox(function=self.update_plot,label="Live update",key="live_update",columnSpan=1,next_row=False,status=True)
+            self.add_checkbox(function=self.update_plot, label="Live update", key="live_update", next_row=False, status=True)
 
 
 
@@ -397,7 +402,7 @@ def get_interface(plot_figure,remember_config=False,i=0):
         
 
 
-            self.add_text(key="save_path",text="",next_row=False,max_width=False,function=self.update_savebutton,vdiv=False,min_width=True)
+            self.add_text(key="save_path",text="",next_row=False,max_width=False,function=self.update_savebutton,vdiv=False,min_width=True,columnSpan=1)
 
             self.add_checkbox(function=self.update_savebutton,label="Replace?",key="save_replace",next_row=False,max_width=False,vdiv=True)
 
@@ -548,9 +553,6 @@ class Figure:
       self.main.add_slider(*args,**kwargs)
 
 
-#  def add_text(self,*args,**kwargs):
-#    self.main.add_text(*args,**kwargs)
-
   def add_text(self,*args,**kwargs):
 
     if self.main.findChild(QtWidgets.QLineEdit,kwargs["key"]) is None:
@@ -611,7 +613,8 @@ if __name__ == '__main__':
 
   fig.add_text(label="Shift",key="dy",text="0.0",columnSpan=1)
   
-  fig.add_combobox(["red","blue","black"],label="Color",key="c",next_row=False)
+  fig.add_combobox(["red","blue","black"],label="Color",key="c")
+  
   
   
   
