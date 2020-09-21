@@ -1,7 +1,23 @@
+#############################################################################
+#
+#   GUI for plotting any 2D data and manipulates parametes through
+#           sliders, drop-down menus, editable text, checkboxes, buttons 
+#
+#   It also saves screenshots and, 
+#            if desired, remembers a past parameter configuration
+#
+#   Based on the GUI tool developed by Jose Lado,
+#
+#       project ------  https://github.com/joselado/quantum-honeycomp
+#       file    ------  /pysrc/interfacetk/plotpyqt.py
+#
+#############################################################################
+
+
 import numpy as np
 import sys,os
 import json
-
+import matplotlib.pyplot as plt
 
 from PyQt5.QtCore import Qt
 from PyQt5 import QtWidgets
@@ -10,9 +26,15 @@ from PyQt5.QtWidgets import QDialog, QApplication, QVBoxLayout, QGridLayout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-import matplotlib.pyplot as plt
 
+
+
+#===========================================================================#
 #
+#
+#
+#---------------------------------------------------------------------------#
+
 
 def get_interface(plot_figure,remember_config=False,i=0):
     """Return an object that plots stuff"""
@@ -159,6 +181,11 @@ def get_interface(plot_figure,remember_config=False,i=0):
             if min_width:
               widget.setMinimumWidth(self.min_width)
 
+        # ----------------------------------------- #
+        # ------------ configuration -------------- #
+        # ----------------------------------------- #
+
+
         def config_file(self):
 
             return os.getcwd() + "/pyqt_config.json"
@@ -171,6 +198,7 @@ def get_interface(plot_figure,remember_config=False,i=0):
             except FileNotFoundError:
                 print("Could not load pyqt configuration file.")
                 pass
+
 
         def getwrite_config(self):
 
@@ -214,15 +242,15 @@ def get_interface(plot_figure,remember_config=False,i=0):
 	# ----------------------------------------- #
 
 
-        def add_combobox(self,cs,label=None,key=None,next_row=False,columnSpan=1,function="passive",vdiv=False):
+        def add_combobox(self, vs=[], label=None, key=None, next_row=False, columnSpan=1, function="passive", vdiv=False):
 
             combo = QtWidgets.QComboBox(objectName=self.check_key(key,label))
 
-            combo.addItems(list(map(str,cs)))
+            combo.addItems(list(map(str,vs)))
  
             self.connect_object(combo.currentTextChanged.connect,function)
 
-            columnSpan = self.implement_newrow(next_row,vdiv,columnSpan,label is not None)
+            columnSpan = self.implement_newrow(next_row, vdiv, columnSpan, label is not None)
 
             self.add_label(label)
 
@@ -497,6 +525,7 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
             self.update_savebutton()
 
+	# ----------------------------------------- #
         
     app = QApplication(sys.argv)
 
@@ -507,6 +536,14 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
 
     return app,main
+
+
+
+#===========================================================================#
+#
+#   Figure class which is called by the user
+#
+#---------------------------------------------------------------------------#
 
 
 
