@@ -212,7 +212,6 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
             status["checkbox"] = {c.objectName():c.isChecked() for c in self.findChildren(QtWidgets.QCheckBox)}
 
-
             status["combobox"] = {c.objectName():c.currentIndex() for c in self.findChildren(QtWidgets.QComboBox)}
 
             status["slider"] = {c.objectName():c.value() for c in self.findChildren(QtWidgets.QSlider)}
@@ -220,6 +219,10 @@ def get_interface(plot_figure,remember_config=False,i=0):
             status["text"] = {c.objectName():c.text() for c in self.findChildren(QtWidgets.QLineEdit)}
 
             return status
+
+
+
+
         
         def set_fun(self,type_):
 
@@ -227,13 +230,17 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
         def set_config(self,status):
 
+            current_objects = self.current_config()
+
             for (type_,state_) in status.items():
 
                 f = self.set_fun(type_)
+            
+                for (name, value) in state_.items():
 
-                for item in state_.items():
+                    if name in current_objects[type_]:
 
-                    f(*item)
+                        f(name, value)
                 
 
 
