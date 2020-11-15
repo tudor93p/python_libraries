@@ -36,7 +36,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 #---------------------------------------------------------------------------#
 
 
-def get_interface(plot_figure,remember_config=False,i=0):
+def get_interface(plot_figure,i=0):
     """Return an object that plots stuff"""
     class Window(QDialog):
         def __init__(self, parent=None):
@@ -79,8 +79,7 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
             self._dynamic_ax.figure.canvas.draw()
 
-            if remember_config:
-                self.getwrite_config()
+            self.getwrite_config()
 
         def update_plot(self):
 
@@ -97,10 +96,32 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
         def SliderVal(self,x):
 
-          if isinstance(x,np.float64):
-            return str(np.round(x,3))
+            if not isinstance(x,np.float64):
 
-          return str(x)
+                return str(x)
+
+            n = 3
+            
+            if np.abs(x) < 1e-20:
+            
+                magn = 1
+            
+            elif 1e-20 < np.abs(x) < 1:
+            
+                magn = -int(np.ceil(np.abs(np.log10(np.abs(x)))))
+            
+            else:
+                magn = int(np.floor(np.log10(np.abs(x)))) + 1
+            
+            n -= magn + (magn<0) 
+            
+            if n <= 0: 
+            
+                return str(np.array(np.round(x,n),dtype=int))
+            
+            return str(np.round(x,n))
+
+
 
 
         def connect_object(self,connect,function):
@@ -129,9 +150,13 @@ def get_interface(plot_figure,remember_config=False,i=0):
        
             return key 
 
+        def jump_on_next_row(self):
+
+            self.row += 1 
+            self.column = 0 
+
         def implement_newrow(self,next_row,vdiv,columnSpan,extra_space=0):
 
-            
             if next_row==False:
               needed_space = vdiv + max(1,columnSpan) + extra_space 
 
@@ -139,8 +164,7 @@ def get_interface(plot_figure,remember_config=False,i=0):
                 next_row=True
 
             if next_row:
-              self.row += 1 
-              self.column = 0 
+              self.jump_on_next_row()
 
             else:
                 
@@ -190,20 +214,92 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
             return os.getcwd() + "/pyqt_config.json"
 
+        def read_config(self):
+
+            if os.path.exists(self.config_file()):
+                with open(self.config_file(),"r") as f:
+    
+                    return json.load(f)
+#                    try: return json.load(f)
+
+#                    except: pass
+
+            return {k:{} for k in ["checkbox","combobox","slider","text"]}
+
+
+
         def readset_config(self):
 
-            try:
-                with open(self.config_file(),"r") as f:
-                    self.set_config(json.load(f))
-            except FileNotFoundError:
-                print("Could not load pyqt configuration file.")
-                pass
+            if os.path.exists(self.config_file()):
+            
+                live = self.get_checkbox("live_update")
+            
+                self.set_checkbox("live_update", False)
+           
+                self.set_config(self.read_config())
+
+                self.set_checkbox("live_update", live)
+           
+                print("Slider configuration loaded. Plotting.")
+
+                self.plot()
+
+            else:
+                print("There is no pyqt_config file.")
 
 
         def getwrite_config(self):
 
-            with open(self.config_file(),"w") as f:
-                json.dump(self.current_config(),f)
+
+            if self.get_checkbox("remember_config"):
+
+                out = self.get_config()
+    
+                with open(self.config_file(),"w") as f:
+
+                    json.dump(out, f)
+
+                print("Written slider configuration")
+
+
+        def get_config(self):
+
+            method = self.get_combobox("save_config")
+
+
+            current = self.current_config()
+
+            if method == "Overwrite":
+               
+                return current
+
+            saved = self.read_config()
+
+
+            if method == "Update and extend":
+
+                return {T:{**saved[T],**current[T]} for T in current}
+
+
+            for T in current:
+
+                for k in list(current[T].keys()):
+                    
+                    if (method == "Add extras" and k in saved[T]) or (method == "Update existing" and k not in saved[T]):
+                        
+                        current[T].pop(k)
+                         
+                saved[T].update(current[T])
+
+            return saved 
+        
+
+            
+
+
+
+
+
 
 
         def current_config(self):
@@ -212,7 +308,15 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
             status["checkbox"] = {c.objectName():c.isChecked() for c in self.findChildren(QtWidgets.QCheckBox)}
 
+            status["checkbox"].pop("remember_config")
+            status["checkbox"].pop("live_update")
+
+
             status["combobox"] = {c.objectName():c.currentIndex() for c in self.findChildren(QtWidgets.QComboBox)}
+
+            status["combobox"].pop("save_config")
+
+
 
             status["slider"] = {c.objectName():c.value() for c in self.findChildren(QtWidgets.QSlider)}
 
@@ -228,16 +332,17 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
             return {"checkbox":self.set_checkbox,"combobox":self.set_combobox,"slider":self.set_slider,"text":self.set_text}[type_]
 
+
         def set_config(self,status):
 
             current_objects = self.current_config()
 
             for (type_,state_) in status.items():
+            
 
                 f = self.set_fun(type_)
             
                 for (name, value) in state_.items():
-
                     if name in current_objects[type_]:
 
                         f(name, value)
@@ -429,9 +534,13 @@ def get_interface(plot_figure,remember_config=False,i=0):
             self.add_checkbox(function=self.update_plot, label="Live update", key="live_update", next_row=False, status=True)
 
 
+            self.add_button(self.readset_config, label="Load config.", key="load_config",next_row=False, vdiv=False)
 
 
+            self.add_checkbox(label="Save config.", key="remember_config", next_row=False, status=False)
 
+
+            self.add_combobox(["Overwrite", "Update existing", "Add extras", "Update and extend"], key="save_config")#, function=self.getwrite_config)
 
             self.add_button(self.save_file,label="Save file(s)",key="save_window",next_row=False,vdiv=True)
         
@@ -439,16 +548,16 @@ def get_interface(plot_figure,remember_config=False,i=0):
 
             self.add_text(key="save_path",text="",next_row=False,max_width=False,function=self.update_savebutton,vdiv=False,min_width=True,columnSpan=1)
 
-            self.add_checkbox(function=self.update_savebutton,label="Replace?",key="save_replace",next_row=False,max_width=False,vdiv=True)
+            self.add_checkbox(function=self.update_savebutton,label="Replace?",key="save_replace",next_row=False,max_width=False,vdiv=False)
 
             
 
-            resolutions = [200,400,800,1600]
+            resolutions = [100,200,400,800,1600]
 
-            self.add_combobox(['No','pdf']+list(map(str,resolutions)),label="Higher resolution",key="save_justfig",next_row=False,function=None,vdiv=True)
+            self.add_combobox(['No','pdf']+list(map(str,resolutions)),label="Higher resolution",key="save_justfig",next_row=False,function=None,vdiv=False)
  
 
-            self.add_button(self.set_savepath_minus,label="Fig.nr --",key="save_decrease",next_row=False,vdiv=True)
+#            self.add_button(self.set_savepath_minus,label="Fig.nr --",key="save_decrease",next_row=False,vdiv=True)
             self.add_button(self.set_savepath_plus,label="Fig.nr ++",key="save_increase",next_row=False,vdiv=False)
 
             self.set_savepath()
@@ -557,7 +666,7 @@ def get_interface(plot_figure,remember_config=False,i=0):
 class Figure:
 
 
-  def __init__(self,funfig,nrows=1,ncols=1,tight=True,remember_config=False,**kwargs):
+  def __init__(self,funfig,nrows=1,ncols=1,tight=True,**kwargs):
 
 
     def funfig_(obj):
@@ -570,15 +679,11 @@ class Figure:
         fig_.tight_layout(h_pad=0.1,w_pad=0.1) # adjust axis
       return fig_
     
-    self.app,self.main = get_interface(funfig_,remember_config)
+    self.app,self.main = get_interface(funfig_)
 
-    self.remember_config = remember_config
 
   def show(self):  
 
-    if self.remember_config:
-
-        self.main.readset_config()
 
     self.main.plot()
 
@@ -615,6 +720,9 @@ class Figure:
 
       self.main.add_checkbox(*args,**kwargs)
 
+  def new_row(self):
+
+      self.main.jump_on_next_row()
 
 
 if __name__ == '__main__':
@@ -636,7 +744,7 @@ if __name__ == '__main__':
     ax.set_ylim([-2,2])
   
   
-  fig = Figure(funfig,remember_config=True) # initialize figure instance
+  fig = Figure(funfig) # initialize figure instance
   
   
   ks = np.linspace(1.0,3.0,50) # wavevectors
@@ -658,7 +766,6 @@ if __name__ == '__main__':
   fig.add_text(label="Shift",key="dy",text="0.0",columnSpan=1)
   
   fig.add_combobox(["red","blue","black"],label="Color",key="c")
-  
   
   
   

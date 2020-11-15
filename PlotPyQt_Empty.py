@@ -22,7 +22,7 @@ def funfig(obj,fig,ax):
 
 
 
-Fig = PlotPyQt.Figure(funfig)#,1,1,tight=True,remember_config=False,**kwargs) 
+Fig = PlotPyQt.Figure(funfig)#,1,1,tight=True,**kwargs) 
 
 
 
