@@ -15,7 +15,7 @@
 
 
 import numpy as np
-import sys,os
+import sys,os,warnings
 import json
 import matplotlib.pyplot as plt
 
@@ -65,6 +65,9 @@ def get_interface(plot_figure,i=0):
 
         def plot(self):
             '''Plot the figure'''
+
+            print("Producing figure...")
+
             self._dynamic_ax.clear()
 
             self.figure.clear()
@@ -81,10 +84,21 @@ def get_interface(plot_figure,i=0):
 
             self.getwrite_config()
 
+            print("Plotting finished.\n")
+
+
         def update_plot(self):
+
+            for name in self.slidertext:
+                self.get_slider(name)
+
+            self.getwrite_config()
 
             if self.get_checkbox("live_update"):
               self.plot()
+   
+
+
 
 
         def Vdiv(self):
@@ -209,16 +223,48 @@ def get_interface(plot_figure,i=0):
         # ------------ configuration -------------- #
         # ----------------------------------------- #
 
+        def config_file_exists(self):
+
+            folder = os.getcwd() + "/pyqt_config/"  
+
+            if os.path.isdir(folder):
+
+                fn = self.get_combobox("nr_config")+".json"
+
+                if os.path.exists(folder+fn):
+                    return True
+
+            print("There is no pyqt_config file.")
+
+            return False
 
         def config_file(self):
 
-            return os.getcwd() + "/pyqt_config.json"
+            fn = self.get_combobox("nr_config")+".json"
+
+            folder = os.getcwd() + "/pyqt_config/"  
+
+            if os.path.isdir(folder)==False:
+
+              os.mkdir(folder)
+            
+            return folder + fn 
+
+#            return os.getcwd() + "/pyqt_config.json"
+
+        def must_save_config(self):
+
+            return self.get_combobox("save_config")!="No"
+
+#            return self.get_checkbox("remember_config")
+
+
 
         def read_config(self):
 
-            if os.path.exists(self.config_file()):
-                with open(self.config_file(),"r") as f:
-    
+            if self.config_file_exists():
+                with open(self.config_file(), "r") as f:
+
                     return json.load(f)
 #                    try: return json.load(f)
 
@@ -230,7 +276,7 @@ def get_interface(plot_figure,i=0):
 
         def readset_config(self):
 
-            if os.path.exists(self.config_file()):
+            if self.config_file_exists():
             
                 live = self.get_checkbox("live_update")
             
@@ -240,26 +286,26 @@ def get_interface(plot_figure,i=0):
 
                 self.set_checkbox("live_update", live)
            
-                print("Slider configuration loaded. Plotting.")
+                print("Slider configuration,",self.get_combobox("nr_config"),"loaded.")
 
-                self.plot()
+#                print("Slider configuration loaded. Plotting.")
 
-            else:
-                print("There is no pyqt_config file.")
+#                self.plot()
+
 
 
         def getwrite_config(self):
 
-
-            if self.get_checkbox("remember_config"):
-
-                out = self.get_config()
+            if self.must_save_config():
     
+                out = self.get_config()
+
                 with open(self.config_file(),"w") as f:
 
                     json.dump(out, f)
 
-                print("Written slider configuration")
+
+                print("Written slider configuration", self.get_combobox("nr_config"))
 
 
         def get_config(self):
@@ -308,12 +354,15 @@ def get_interface(plot_figure,i=0):
 
             status["checkbox"] = {c.objectName():c.isChecked() for c in self.findChildren(QtWidgets.QCheckBox)}
 
-            status["checkbox"].pop("remember_config")
+#            status["checkbox"].pop("remember_config")
             status["checkbox"].pop("live_update")
+
+
 
 
             status["combobox"] = {c.objectName():c.currentIndex() for c in self.findChildren(QtWidgets.QComboBox)}
 
+            status["combobox"].pop("nr_config")
             status["combobox"].pop("save_config")
 
 
@@ -433,7 +482,10 @@ def get_interface(plot_figure,i=0):
             val = slider.vs[ival]
 
             self.slidertext[name].setText(self.SliderVal(val))
-             
+           
+
+
+
             if index:
               return val,ival
 
@@ -466,7 +518,7 @@ def get_interface(plot_figure,i=0):
 
         def set_text(self,name,text):
             le = self.findChild(QtWidgets.QLineEdit,name)
-            le.setText(text) 
+            le.setText(str(text))
 
 
 	# ----------------------------------------- #
@@ -527,24 +579,26 @@ def get_interface(plot_figure,i=0):
         def add_functionalities(self):
 
 
+
             self.add_button(self.plot, label="Update plot", key="update", next_row=True)
 
-
-
-            self.add_checkbox(function=self.update_plot, label="Live update", key="live_update", next_row=False, status=True)
+            self.add_checkbox(label="Live", key="live_update", next_row=False, status=True, function=None)
 
 
             self.add_button(self.readset_config, label="Load config.", key="load_config",next_row=False, vdiv=False)
 
 
-            self.add_checkbox(label="Save config.", key="remember_config", next_row=False, status=False)
+#            self.add_checkbox(label="Save config.", key="remember_config", next_row=False, status=False, function=None)
 
 
-            self.add_combobox(["Overwrite", "Update existing", "Add extras", "Update and extend"], key="save_config")#, function=self.getwrite_config)
+            self.add_combobox(["No", "Update and extend", "Overwrite", "Update existing", "Add extras"], key="save_config", label="Save config.", function=self.getwrite_config)
+
+            self.add_combobox(range(1,6), #label="Save config.", 
+                            key="nr_config", function=self.getwrite_config)
 
             self.add_button(self.save_file,label="Save file(s)",key="save_window",next_row=False,vdiv=True)
-        
 
+        
 
             self.add_text(key="save_path",text="",next_row=False,max_width=False,function=self.update_savebutton,vdiv=False,min_width=True,columnSpan=1)
 
@@ -554,7 +608,7 @@ def get_interface(plot_figure,i=0):
 
             resolutions = [100,200,400,800,1600]
 
-            self.add_combobox(['No','pdf']+list(map(str,resolutions)),label="Higher resolution",key="save_justfig",next_row=False,function=None,vdiv=False)
+            self.add_combobox(['No','pdf']+list(map(str,resolutions)),label="Higher resolution",key="save_justfig",next_row=False,function=self.update_savebutton,vdiv=False)
  
 
 #            self.add_button(self.set_savepath_minus,label="Fig.nr --",key="save_decrease",next_row=False,vdiv=True)
@@ -576,8 +630,6 @@ def get_interface(plot_figure,i=0):
             if os.path.isdir(folder)==False:
 
               os.mkdir(folder)
-
-
 
             self.set_text("save_path",path)
            
@@ -676,7 +728,13 @@ class Figure:
       funfig(obj,fig_,axes)
 
       if tight:
-        fig_.tight_layout(h_pad=0.1,w_pad=0.1) # adjust axis
+
+        with warnings.catch_warnings():  
+
+          warnings.filterwarnings("ignore",category=UserWarning)
+
+          fig_.tight_layout(h_pad=0.1,w_pad=0.1) # adjust axis
+
       return fig_
     
     self.app,self.main = get_interface(funfig_)
@@ -708,6 +766,11 @@ class Figure:
 
       self.main.add_text(*args,**kwargs)
 
+  def set_text(self,*args):
+
+      self.main.set_text(*args)
+
+
   def add_combobox(self,*args,**kwargs):
 
     if self.main.findChild(QtWidgets.QComboBox,kwargs["key"]) is None:
@@ -723,6 +786,10 @@ class Figure:
   def new_row(self):
 
       self.main.jump_on_next_row()
+
+
+
+
 
 
 if __name__ == '__main__':
