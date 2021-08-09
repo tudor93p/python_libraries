@@ -15,7 +15,7 @@
 
 
 import numpy as np
-import sys,os,warnings
+import sys,os,warnings,datetime
 import json
 import matplotlib.pyplot as plt
 
@@ -34,6 +34,25 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 #
 #
 #---------------------------------------------------------------------------#
+
+def resol_str(S):
+
+    Si = np.array(np.round(S), dtype=int)
+
+    px = "x".join(map(str,Si)) 
+    
+    MP = str(np.round(np.prod(Si)/1e6,1))
+
+    return " = ".join([px+"px", MP+"MP"])
+
+
+def calc_dpi(S, MP):
+
+    nr_pixels = 1e6*int(MP)   # Megapixels 
+
+    dpi = int(np.round(np.sqrt(nr_pixels/np.prod(S))))
+
+    return dpi, np.array(np.round(S*dpi), dtype=int)
 
 
 def get_interface(plot_figure,i=0):
@@ -606,9 +625,11 @@ def get_interface(plot_figure,i=0):
 
             
 
-            resolutions = [100,200,400,800,1600]
+            resolutions = [str(n)+"MP" for n in [2,5,10,20]]
 
-            self.add_combobox(['No','pdf']+list(map(str,resolutions)),label="Higher resolution",key="save_justfig",next_row=False,function=self.update_savebutton,vdiv=False)
+
+
+            self.add_combobox(['No','pdf']+resolutions, label="High res.", key="save_justfig", next_row=False, function=self.update_savebutton,vdiv=False)
  
 
 #            self.add_button(self.set_savepath_minus,label="Fig.nr --",key="save_decrease",next_row=False,vdiv=True)
@@ -621,15 +642,19 @@ def get_interface(plot_figure,i=0):
 
         def set_savepath(self):
 
-            fn = str(self.figure_number).zfill(3)
+#            fn = str(self.figure_number).zfill(3) 
+
+            fn = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+
 
             folder = os.getcwd() + "/pyqt_figures/"  
 
-            path = folder + fn 
 
             if os.path.isdir(folder)==False:
 
               os.mkdir(folder)
+
+            path = folder + fn 
 
             self.set_text("save_path",path)
            
@@ -653,13 +678,13 @@ def get_interface(plot_figure,i=0):
 
         def set_savepath_plus(self):
 
-            self.figure_number = min(999,self.figure_number+1)
+            self.figure_number = min(999, self.figure_number+1)
 
             self.set_savepath()
 
         def set_savepath_minus(self):
 
-            self.figure_number = max(0,self.figure_number-1)
+            self.figure_number = max(0, self.figure_number-1)
 
             self.set_savepath()
 
@@ -667,29 +692,47 @@ def get_interface(plot_figure,i=0):
 
             fn = self.get_text("save_path") # without extension
 
+            print("\nFilename:",fn) 
+
 #            isfile = os.path.exists(fn)
 
             screen = QApplication.primaryScreen()
 
             screenshot = screen.grabWindow( self.winId() )
 
-#            screenshot = screenshot.scaledToWidth(2000)
- 
+            S = [screenshot.width(), screenshot.height()]
+
+            print("Screenshot resolution:",resol_str(S)) 
+
             screenshot.save(fn+"_pyqt.png",'png')	#,quality=100)
+            
+          
 
- 
             justfig = self.get_combobox("save_justfig")
-
              
-            if justfig != "No":
+            if justfig != "No": 
+
               if "pdf" in justfig:
   
-                self.figure.savefig(fn+'_highres.pdf',format='pdf')
-  
-              else:
-                self.figure.savefig(fn+'_highres.png',dpi=int(justfig),format='png') 
+                self.figure.savefig(fn+'_highres.pdf', format='pdf') 
 
-            print("File(s) saved:",fn)
+                print("Savefig: pdf")
+
+              else: 
+
+                dpi,S = calc_dpi(self.figure.get_size_inches(), justfig[:-2])
+
+                print("Savefig resolution:", resol_str(S))
+                        
+                self.figure.savefig(fn+'_highres.png',dpi=dpi,format='png') 
+
+              print("Two files saved.\n")
+
+            else:
+
+              print("File saved.\n")
+
+#            self.set_savepath()
 
             self.update_savebutton()
 
