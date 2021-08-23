@@ -712,9 +712,11 @@ def get_interface(plot_figure,i=0):
              
             if justfig != "No": 
 
+              FN = fn+'_highres'
+
               if "pdf" in justfig:
   
-                self.figure.savefig(fn+'_highres.pdf', format='pdf') 
+                self.figure.savefig(FN+'.pdf', format='pdf') 
 
                 print("Savefig: pdf")
 
@@ -724,7 +726,12 @@ def get_interface(plot_figure,i=0):
 
                 print("Savefig resolution:", resol_str(S))
                         
-                self.figure.savefig(fn+'_highres.png',dpi=dpi,format='png') 
+                self.figure.savefig(FN+'.png',dpi=dpi,format='png') 
+
+
+                os.system(f"convert {FN}.png {FN}.pdf; rm {FN}.png")
+
+
 
               print("Two files saved.\n")
 
