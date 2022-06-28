@@ -15,12 +15,13 @@
 
 
 import numpy as np
-import sys,os,warnings,datetime
+import sys,os,warnings,datetime,time
 import json
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt 
 
-from PyQt5.QtCore import Qt
-from PyQt5 import QtWidgets
+
+from PyQt5.QtCore import Qt#, QTimer
+from PyQt5 import QtWidgets,QtCore 
 from PyQt5.QtWidgets import QDialog, QApplication, QVBoxLayout, QGridLayout
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -28,6 +29,38 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 
 
+
+#===========================================================================#
+#
+#
+#
+#---------------------------------------------------------------------------#
+
+
+#
+#class Logger(QtCore.QThread): 
+#
+#    sec_signal = QtCore.pyqtSignal(str)
+#
+#    def __init__(self, parent=None):
+#        super(Logger, self).__init__(parent)
+#
+#        self.initial_time = datetime.datetime.now()
+#        self.current_time = datetime.datetime.now() 
+#
+#        self.go = True 
+#
+#    def run(self):
+#        #this is a special fxn that's called with the start() fxn
+#        while self.go:
+#            time.sleep(0.5+np.random.rand())
+#
+#
+#            self.current_time = datetime.datetime.now()
+#
+#            self.sec_signal.emit(str((self.current_time - self.initial_time).seconds)) 
+#
+#
 
 #===========================================================================#
 #
@@ -53,6 +86,10 @@ def calc_dpi(S, MP):
     dpi = int(np.round(np.sqrt(nr_pixels/np.prod(S))))
 
     return dpi, np.array(np.round(S*dpi), dtype=int)
+
+
+
+
 
 
 def get_interface(plot_figure,i=0):
@@ -82,18 +119,50 @@ def get_interface(plot_figure,i=0):
             self.figure_number = 0 
 
 
+            
+
+#############
+
+#            self.logger = Logger() 
+#
+#            self.logger.sec_signal.connect(print)#self.figure.suptitle)
+#
+#            self.logger.start()
+#
+#        def disable_update_button(self): 
+#            print("disabling button")
+#            self.findChild(QtWidgets.QPushButton,"update").setEnabled(False)    
+#            time.sleep(1)
+#
+#        def enable_update_button(self):
+#            print("enable button")
+#            self.findChild(QtWidgets.QPushButton,"update").setEnabled(True)   
+#        
+#        def sleep5sec(self):
+#
+#            self.disable_update_button()
+#
+#            print("button sleeps  one second") 
+#
+#            QTimer.singleShot(2000, self.enable_update_button) 
+
+
+###########################33
+
         def plot(self):
             '''Plot the figure'''
+            
+            
+            t0 = datetime.datetime.now() 
 
             print("Producing figure...")
 
+
             self._dynamic_ax.clear()
 
-            self.figure.clear()
-
-            fig = plot_figure(self) # get that figure
-
-#            plt.tight_layout(h_pad=0.1,w_pad=0.1) # adjust axis
+            self.figure.clear() 
+            
+            fig = plot_figure(self) # get that figure 
 
 
             if fig.number!=self.figure.number: 
@@ -103,10 +172,33 @@ def get_interface(plot_figure,i=0):
 
             self.getwrite_config()
 
-            print("Plotting finished.\n")
+            n = (datetime.datetime.now()-t0).seconds
+    
+
+            if n > 3600:
+
+                dts = str(np.round(n/3600,1))+" hours"
+
+            elif n > 60:
+                
+                dts = str(np.round(n/60,1))+" minutes"
+
+            else:
+
+                dts = str(n) + " second" + ("" if n==1 else "s")
+
+
+
+
+            print(f"Plotting finished in {dts}.\n")
+
+
+
+
 
 
         def update_plot(self):
+
 
             for name in self.slidertext:
                 self.get_slider(name)
@@ -436,6 +528,9 @@ def get_interface(plot_figure,i=0):
 
             self.add_widget(combo,columnSpan)
 
+            return combo 
+
+
         def get_combobox(self,name):
             """Get the value of a combobox"""
             obj = self.findChild(QtWidgets.QComboBox,name)
@@ -485,6 +580,7 @@ def get_interface(plot_figure,i=0):
             self.setLayout(self.layout)
 
 
+            return slider 
 
 
         def set_slider(self,name,v):
@@ -529,7 +625,9 @@ def get_interface(plot_figure,i=0):
 
             self.add_widget(le,columnSpan,max_width,min_width)
 
-            self.setLayout(self.layout)
+            self.setLayout(self.layout) 
+
+            return le 
 
         def get_text(self,name):
             le = self.findChild(QtWidgets.QLineEdit,name)
@@ -587,7 +685,9 @@ def get_interface(plot_figure,i=0):
 
             columnSpan = self.implement_newrow(next_row,vdiv,columnSpan)
 
-            self.add_widget(btn,columnSpan,max_width)
+            self.add_widget(btn,columnSpan,max_width) 
+
+            return btn 
 
 
 	# ----------------------------------------- #
@@ -598,10 +698,15 @@ def get_interface(plot_figure,i=0):
         def add_functionalities(self):
 
 
-
             self.add_button(self.plot, label="Update plot", key="update", next_row=True)
 
-            self.add_checkbox(label="Live", key="live_update", next_row=False, status=True, function=None)
+
+###############  
+#            btn = self.add_button(self.sleep5sec, label="Update plot", key="update", next_row=True)
+#            btn.clicked.connect(self.plot) 
+#################3
+
+            self.add_checkbox(label="Live", key="live_update", next_row=False, status=False, function=None)
 
 
             self.add_button(self.readset_config, label="Load config.", key="load_config",next_row=False, vdiv=False)
@@ -724,16 +829,17 @@ def get_interface(plot_figure,i=0):
 
                 dpi,S = calc_dpi(self.figure.get_size_inches(), justfig[:-2])
 
-                print("Savefig resolution:", resol_str(S))
-                        
-                self.figure.savefig(FN+'.png',dpi=dpi,format='png') 
+                print(f"Savefig resolution ({dpi}dpi):", resol_str(S))
+                       
+
+                self.figure.savefig(FN+'.png', dpi=dpi, format='png') 
+
+                os.system(f"convert {FN}.png {FN}.pdf")
+#                os.system(f"rm {FN}.png")
 
 
-                os.system(f"convert {FN}.png {FN}.pdf; rm {FN}.png")
 
-
-
-              print("Two files saved.\n")
+              print("Three files saved.\n")
 
             else:
 
@@ -846,9 +952,11 @@ if __name__ == '__main__':
 
   def funfig(obj,Fig,ax): 
   
-  
     xs = np.linspace(0.,10.,300) # xgrid
-  
+ 
+#    print("Waiting 6s")
+#    time.sleep(6)
+#    print("Waiting finished")
   
     # get the value of the slider
     ys = np.cos(xs*obj.get_slider("k") + obj.get_slider("phi")) 
@@ -858,7 +966,10 @@ if __name__ == '__main__':
   
     ax.plot(xs,ys,c=obj.get_combobox("c")) # plot data
   
-    ax.set_ylim([-2,2])
+    ax.set_ylim([-2,2]) 
+
+    time.sleep(1.5)
+
   
   
   fig = Figure(funfig) # initialize figure instance
