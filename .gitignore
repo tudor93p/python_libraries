@@ -1,0 +1,6 @@
+.*.py.un*
+__pycache__
+pyqt_config
+pyqt_figures
+.*.swp
+

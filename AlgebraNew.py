@@ -1,7 +1,7 @@
 import numpy as np
 import sympy as sp
 from sympy.physics.quantum import TensorProduct as spkron
-#from numpy import linalg as la
+#from numpy import linalg as np.linalg
 #import itertools
 #import time
 #import matplotlib.pyplot as plt
@@ -44,7 +44,7 @@ from sympy.physics.quantum import TensorProduct as spkron
 #
 #
 #
-#    uvalu = lambda arg: (arg, f(arg))
+#    uvalu = np.linalgmbda arg: (arg, f(arg))
 #
 #
 #
@@ -144,7 +144,7 @@ from sympy.physics.quantum import TensorProduct as spkron
 #def Invert_LattVect(vectors):
 #
 #
-#  inverse = la.inv(np.array(vectors)[:,:len(vectors)]).T*2*np.pi
+#  inverse = np.linalg.inv(np.array(vectors)[:,:len(vectors)]).T*2*np.pi
 #
 #  for _ in range(np.array(vectors).shape[1]-len(inverse)):
 #  
@@ -374,7 +374,7 @@ def Kronecker(X, symbolic=False, **kwargs):
 ##
 ##  if nr == dim:
 ##
-##    if Utils.Same(la.det(vs),0):
+##    if Utils.Same(np.linalg.det(vs),0):
 ##      print('** Error: vectors not linearly independent **')
 ##      exit()
 ##    return []
@@ -398,7 +398,7 @@ def Kronecker(X, symbolic=False, **kwargs):
 ##  for x in itertools.product(*[all_perp for _ in range(dim-nr)]):
 ##
 ##    magnitude = np.sum(np.abs(x))
-##    det = la.det(np.vstack((np.matrix(x),vm)))
+##    det = np.linalg.det(np.vstack((np.matrix(x),vm)))
 ##
 ##    if not Utils.Same(det,0) and magnitude < magnitude_perp:
 ##      magnitude_perp = magnitude
@@ -427,60 +427,77 @@ def Kronecker(X, symbolic=False, **kwargs):
 #  return out
 #
 #
-##==============================================================================
-## Modified Gram-Schmidt orthogonalization
-##------------------------------------------------------------------------------ț
+
+#==============================================================================
+# Computes the overlap matrix of two sets of wavefunctions (on lines)
+#------------------------------------------------------------------------------
+
+def overlap_matrix(wf1,wf2=None):
+
+    if wf2 is None: return overlap_matrix(wf1, wf1)
+
+    return np.matrix(wf1).conjugate()*(np.matrix(wf2).T)
+
+#==============================================================================
+# Modified Gram-Schmidt orthogonalization
+#------------------------------------------------------------------------------
+
+# it takes between [1,6]*10**(-4) seconds
+
+def GramSchmidt(V):
+
+  U = np.zeros((len(V),len(V[0])),dtype=type(V[0][0]))
+
+  for j in range(U.shape[0]):
+    
+    u = V[j].copy()
+
+    for i in range(j):
+
+      u -= np.vdot(U[i],u)*U[i]
+
+    norm = np.linalg.norm(u)
+
+    if norm < 1e-8: 
+      raise ValueError("Invalid input matrix for Gram-Schmidt!")
+    
+    U[j] = u/norm
+
+  return U
+
+#==============================================================================
+# GS orthogonalization
+#------------------------------------------------------------------------------
+
+#def GS_Orthog(psi): #WFs on lines 
 #
-## it takes between [1,6]*10**(-4) seconds
-#
-#def mod_GramSchmidt(V):
-#
-#  V = np.array(V)
-#
-#  U = np.zeros_like(V)
-#
-#  for j in range(V.shape[0]):
-#    
-#    u = V[j].copy()
-#
-#    for i in range(j):
-#
-#      u -= np.vdot(U[i],u)*U[i]
-#
-#    norm = la.norm(u)
-#
-#    if norm < 1e-8: 
-#      raise ValueError("Invalid input matrix for Gram-Schmidt!")
-#    
-#    U[j] = u/norm
-#
-#
-#  return U
-#
-##==============================================================================
-## GS orthogonalization
-##------------------------------------------------------------------------------
-#
-#def GS_Orthog(psi): #WFs on lines
 #  psi = np.matrix(psi)
+#
 #  tolerance = 1e-7
-#  ov = np.abs(uij(psi,psi))
+#
+#  ov = np.abs(overlap_matrix(psi))
+#
 #  if np.amax(np.abs(ov - np.diag(np.diag(ov)))) > tolerance:
-#    Q,R = la.qr(psi.T )  #WFs on columns
+#
+#    Q,R = np.linalg.qr(psi.T)  #WFs on columns
+#
 #    new_psi = Q.T
-#    ov = np.abs(uij(new_psi,new_psi))
+#
+#    ov = np.abs(overlap_matrix(new_psi,new_psi))
 #
 #    if np.amax(np.abs(ov - np.diag(np.diag(ov)))) > tolerance:
-#      print('WFs not orthogonal after GS: ')
+#
+#      print('WFs not orthogonal after GS')
+#
 #      return 0
 #
 #     
 #    return new_psi
 # 
 #  return psi
-#
-#
-#
+
+
+
 ##===========================================================================#
 ## 
 ## Efficient outer sum of two lists of vectors U = 
@@ -517,7 +534,7 @@ def Kronecker(X, symbolic=False, **kwargs):
 ##scipy.spatial.distance.cdist
 ##np.sqrt(np.sum((p[:,np.newaxis,:]-q[np.newaxis,:,:])**2, axis=2)) 
 #
-#  return la.norm(OuterDiff(*args),axis=0)
+#  return np.linalg.norm(OuterDiff(*args),axis=0)
 #
 ##===========================================================================#
 ## 
@@ -541,7 +558,7 @@ def Kronecker(X, symbolic=False, **kwargs):
 #
 #def FlatOuterDist(*args):
 #
-#  return la.norm(FlatOuterDiff(*args),axis=1)
+#  return np.linalg.norm(FlatOuterDiff(*args),axis=1)
 #
 #
 #
@@ -563,7 +580,7 @@ def Kronecker(X, symbolic=False, **kwargs):
 ##  if len(Rs.shape)!=2 or np.size(R0) > Rs.shape[1]:
 ##    raise ValueError("The array must be 2D!")
 ##
-##  return la.norm(Rs-R0,axis=1)
+##  return np.linalg.norm(Rs-R0,axis=1)
 #
 #
 #
@@ -644,7 +661,7 @@ def Kronecker(X, symbolic=False, **kwargs):
 #  intvects = -Utils.vectors_of_integers(len(As[0]),n)
 #
 #      # compute the norm of each n@A1, n@A2
-#  n1,n2 = [np.round(la.norm(intvects@A,axis=1),tol) for A in As]
+#  n1,n2 = [np.round(np.linalg.norm(intvects@A,axis=1),tol) for A in As]
 #
 #      # filter the (n1,n2) pairs which render |n1@A1|==|n2@A2|
 #  
@@ -655,7 +672,7 @@ def Kronecker(X, symbolic=False, **kwargs):
 #  Vs = [intvects[iis] for iis in inds]
 #
 #      # take pair (n1,n2) only if n1@A1 == n2@A2 (not minus)
-#  diff = la.norm(np.subtract(*[V@A for V,A in zip(Vs,As)]),axis=1)
+#  diff = np.linalg.norm(np.subtract(*[V@A for V,A in zip(Vs,As)]),axis=1)
 #
 #  return np.hstack((Vs))[np.nonzero(diff < 10**(-tol))]
 #
@@ -682,7 +699,7 @@ def Kronecker(X, symbolic=False, **kwargs):
 #  Vs = np.zeros((0,2*dim),dtype=int)
 #
 #  for L in Ls:
-#    inds = lambda A: np.nonzero(la.norm(intvects@A-L,axis=1) < 10**(-tol))
+#    inds = lambda A: np.nonzero(np.linalg.norm(intvects@A-L,axis=1) < 10**(-tol))
 #		# intvects[inds(A)] gives the list of integer vectors v_j 
 #		# 	which satisfy v_j A = L; probably 0 <= j <= 1
 #
@@ -744,7 +761,7 @@ def Kronecker(X, symbolic=False, **kwargs):
 #
 #        if len(vs) != dim:
 #  		# extract the maximal set of linearly independent vectors 
-#          vs = Lin_indep_arrays(vs[np.argsort(la.norm(vs,axis=1))])
+#          vs = Lin_indep_arrays(vs[np.argsort(np.linalg.norm(vs,axis=1))])
 #
 #		# split back the pair (n1,n2) 
 #        vs = np.split(np.array(vs),2,axis=1)
@@ -752,7 +769,7 @@ def Kronecker(X, symbolic=False, **kwargs):
 #        Ls12 = [v@A for (v,A) in zip(vs,As)]
 #
 #		# perform an additional sanity check and return n1,n2,L-s
-#        if la.norm(np.subtract(*Ls12)) < 10**(-tol):
+#        if np.linalg.norm(np.subtract(*Ls12)) < 10**(-tol):
 #
 #          Ls = Ls12[0]
 # 
@@ -942,7 +959,7 @@ def Kronecker(X, symbolic=False, **kwargs):
 #
 ##  return expm(R) # very slow: 0.7-0.8ms for 2x2; diagonalization is 0.1-0.2ms
 #
-#  E, U = la.eig(R)
+#  E, U = np.linalg.eig(R)
 #
 #  return np.matmul(np.matmul(U,np.diag(np.exp(E))),np.conj(U.T)).real
 #
