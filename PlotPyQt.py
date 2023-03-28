@@ -968,7 +968,7 @@ if __name__ == '__main__':
   
     ax.set_ylim([-2,2]) 
 
-    time.sleep(1.5)
+#    time.sleep(1.5)
 
   
   
