@@ -15,7 +15,9 @@ end_eq = '\n\\end{equation}\n'
 
 
 #docclass_aps = '\\documentclass[reprint,superscriptaddress,nofootinbib,amsmath,amssymb,aps,pra]{revtex4-1}'
-docclass_aps = '\\documentclass[superscriptaddress,nofootinbib,amsmath,amssymb,aps,pra]{revtex4-2}'
+docclass_aps = '\\documentclass[superscriptaddress,nofootinbib,amsmath,amssymb,aps,prb,reprint]{revtex4-2}'
+
+
 
 docclass_notes = lambda ncol: '\\documentclass[11p,a4paper'+ncol+']{article}'
 
@@ -32,11 +34,28 @@ enddoc = '\\end{document}'
 
 
 
+
+
+#===========================================================================#
+#
+#
+#
+#---------------------------------------------------------------------------#
+
+
+
 class LaTeX_Document:
 
-  def __init__(self,filelatex,style='notes',twocolumn=False,packs=None):
+  def __init__(self,filelatex,style='notes',twocolumn=False,packs=None,
+          packoptions={},preamble='',
+          graphicspath=None):
 
     self.filename = filelatex
+
+    if len(filelatex)<4 or filelatex[-4:]!=".tex":
+
+        self.filename += ".tex"
+
 
     os.system('rm '+self.filename)
   
@@ -65,10 +84,26 @@ class LaTeX_Document:
     else:
       print('Choose style: aps or notes or ETH.')
       exit()
- 
+
     if type(packs) != type(None): 
-      self.Content.append('\\usepackage{'+packs+'}')
-    
+   
+      if len(packoptions)==0:
+        self.Content.append('\\usepackage{'+packs+'}')
+      else:
+
+        for (i,p) in enumerate(packs.split(',')):
+
+          self.Content.append('\\usepackage'+ ('['+packoptions[i]+']' if i in packoptions else '') +'{'+p+'}')
+
+
+
+
+    if graphicspath is not None:
+        self.Content.append("\graphicspath{ {"+ graphicspath.rstrip("/") +"/} }")
+     
+
+    self.Content.append(preamble)
+
     self.Content.append(begindoc)
     
     
@@ -98,11 +133,12 @@ class LaTeX_Document:
 
     self.Add_Text(' '.join([begin_subeq,eq,end_subeq]))
 
-  def Add_Figure(self,filename,wid=0.5,caption='',label=None,align='H'):
+  def Add_Figure(self,filename,width=0.5,widthunit='\\textwidth',
+          caption='',label=None,align='H'):
 
     p1= '\\begin{figure}['+align+']\n\centering'
 
-    p2 ='\includegraphics[width='+str(wid)+'\linewidth]{'+filename+'}'
+    p2 ='\includegraphics[width='+str(width)+widthunit+']{'+filename+'}'
 
     p3 ='\caption{'+caption+'}'
 
@@ -118,7 +154,76 @@ class LaTeX_Document:
 
     text = '\hrule'.join(['\\vspace{'+str(s)+ 'em}' for s in space])
 
-    self.Add_Text(text)
+    print(text)
+    self.Add_Text(text) 
+
+  def Add_Subfile(self,filename):
+
+    self.Add_Text('\\input{'+filename+'}')
+
+
+  def Add_Table(self, T, lines=[[],[]], alignment='', tabcolsep=4,
+          width=None,caption='',label=None,align='t',
+          extrarowheight=4,star=True,
+          fillwidth=False):
+
+    hlines,vlines = [np.array(l)-1 for l in lines]
+    nrows = len(T)
+    ncols = len(T[0])
+    
+    self.Add_Text('')
+    self.Add_Text( '\setlength\extrarowheight{'+str(extrarowheight)+'pt}')
+    self.Add_Text( '\setlength{\\tabcolsep}{'+str(tabcolsep)+'pt}')
+
+    self.Add_Text( '\\begin{table'+('*'*star)+'}['+align+']')
+    
+
+    alignment = list(alignment + 'c'*(ncols-len(alignment))) 
+
+
+    for c in np.sort(vlines)[::-1]:
+      alignment[c] += '|'
+
+
+    self.Add_Text( '\centering')
+    
+    self.Add_Text(
+        ('\\begin{tabular*}{'+str(width)+'\\textwidth}' if width is not None else '\\begin{tabular}')
+        + '{' +''.join(alignment)+'}')
+
+    self.Add_Text( '\hline \hline')
+
+
+    for i in range(nrows):
+      self.Add_Text( ' \n& '.join([str(t) for t in T[i] ]) +'\\\\')
+
+      for _ in range(sum(hlines==i)):
+        self.Add_Text( '\hline')
+
+ 
+    if nrows-1 not in hlines:
+      self.Add_Text( '\hline \hline')
+    else:
+        self.Add_Text( '\hline')
+
+  
+
+
+#  self.Add_Text( +=   '\\\\ \hline \n'.join([' & '.join([str(T[i][j]) for j in range(ncols)]) for i in range(nrows)])
+
+#  self.Add_Text( += '\\\\ \hline'
+
+
+    self.Add_Text('\end{tabular*}' if width is not None else '\end{tabular}')
+
+    self.Add_Text('\caption{'+str(caption)+'}')
+    
+
+    if label != None: 
+        
+        self.Add_Text('\label{'+label+'}')
+
+    self.Add_Text(' \end{table'+('*'*star)+'}')
 
   def NewPage(self):
 
@@ -219,4 +324,25 @@ class LaTeX_Document:
     gothic_re_im : boolean, optional
         If set to ``True``, `\Re` and `\Im` is used for ``re`` and ``im``, respectively.
         The default is ``False`` leading to `\operatorname{re}` and `\operatorname{im}`.
-"""
+""" 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

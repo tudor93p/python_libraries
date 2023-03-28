@@ -153,6 +153,13 @@ from sympy.physics.quantum import TensorProduct as spkron
 #  return inverse
 #
 
+def commutator(A,B):
+    return A@B-B@A
+
+def anticommut(A,B):
+    return A@B+B@A 
+
+
 #==============================================================================
 # Pauli Matrices
 #------------------------------------------------------------------------------
