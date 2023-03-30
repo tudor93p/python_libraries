@@ -85,7 +85,7 @@ def inset_positions(text=None, width=None, height=None):
 
 
 
-def inset_sizes(rectangle, kwargs, changed_keys):
+def inset_sizes(kwargs, changed_keys):
 
     def f(k,v):
 
@@ -108,6 +108,7 @@ def inset_fontsize(rectangle=None, fontsize=10):
 
 def add_inset_axes(ax, rectangle, axisbg='w', fontsize=10):
 
+
     fig = plt.gcf()
 
     box = ax.get_position()
@@ -124,7 +125,8 @@ def add_inset_axes(ax, rectangle, axisbg='w', fontsize=10):
     subax = fig.add_axes(new_rectangle, facecolor=axisbg)
 
 
-    fontsize1 = inset_fontsize(rectangle, fontsize)
+    fontsize1 = inset_fontsize(rectangle, 10 if fontsize is None else fontsize)
+
  
 
 #    for (lab, size, axis) in [(subax.get_xticklabels, width, subax.xaxis),
@@ -179,6 +181,9 @@ def disable_labels(ax):
 
 
 def set_fontsize(ax, fontsize):
+
+    if fontsize is None:
+        return 
 
     if np.ndim(ax)>0:
 

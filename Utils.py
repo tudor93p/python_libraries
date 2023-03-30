@@ -1,9 +1,30 @@
 import numpy as np
 import sympy as sp
 from numpy import linalg as la
-import itertools
+import itertools, json 
+
 
 import Algebra
+
+
+#===========================================================================#
+#
+#
+#
+#---------------------------------------------------------------------------#
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj): 
+
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+
+        if isinstance(obj, np.int64):
+            return int(obj)
+
+        return json.JSONEncoder.default(self, obj) 
+
 
 
 #===========================================================================#
@@ -11,6 +32,7 @@ import Algebra
 #   Get a parameter from a set of dicttionaries 
 #
 #---------------------------------------------------------------------------#
+
 
 def prioritized_get(*dicts):
 

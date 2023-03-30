@@ -28,6 +28,23 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 
+def warning_on_one_line(message, category, filename, lineno, file=None, line=None):
+        return '%s:%s: %s:%s\n' % (filename, lineno, category.__name__, message)
+
+warnings.formatwarning = warning_on_one_line
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj): 
+
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+
+        if isinstance(obj, np.int64):
+            return int(obj)
+
+        return json.JSONEncoder.default(self, obj) 
+
 
 
 #===========================================================================#
@@ -91,8 +108,16 @@ def calc_dpi(S, MP):
 
 
 
+#===========================================================================#
+#
+#
+#
+#---------------------------------------------------------------------------#
 
-def get_interface(plot_figure,i=0):
+
+
+
+def get_interface(plot_figure,i=0,**init_kwargs):
     """Return an object that plots stuff"""
     class Window(QDialog):
         def __init__(self, parent=None):
@@ -118,7 +143,7 @@ def get_interface(plot_figure,i=0):
             self.slidertext = {}
             self.figure_number = 0 
 
-
+            self.output_figure = None  
             
 
 #############
@@ -162,7 +187,7 @@ def get_interface(plot_figure,i=0):
 
             self.figure.clear() 
             
-            fig = plot_figure(self) # get that figure 
+            fig,out_fig = plot_figure(self) # get that figure 
 
 
             if fig.number!=self.figure.number: 
@@ -172,8 +197,18 @@ def get_interface(plot_figure,i=0):
 
             self.getwrite_config()
 
+
+
+##################3
+
+#            do something with out_fig
+
+            self.update_output_figure(out_fig)
+
+##################
+
+
             n = (datetime.datetime.now()-t0).seconds
-    
 
             if n > 3600:
 
@@ -188,9 +223,10 @@ def get_interface(plot_figure,i=0):
                 dts = str(n) + " second" + ("" if n==1 else "s")
 
 
+            print(f"Plotting finished in {dts}.\n") 
 
+            return out_fig 
 
-            print(f"Plotting finished in {dts}.\n")
 
 
 
@@ -199,14 +235,14 @@ def get_interface(plot_figure,i=0):
 
         def update_plot(self):
 
-
             for name in self.slidertext:
                 self.get_slider(name)
 
             self.getwrite_config()
 
-            if self.get_checkbox("live_update"):
-              self.plot()
+            if self.get_checkbox("live_update"): 
+
+                return self.plot()
    
 
 
@@ -285,7 +321,7 @@ def get_interface(plot_figure,i=0):
             if next_row==False:
               needed_space = vdiv + max(1,columnSpan) + extra_space 
 
-              if self.column + needed_space > 15:
+              if self.column + needed_space > 17:
                 next_row=True
 
             if next_row:
@@ -299,7 +335,7 @@ def get_interface(plot_figure,i=0):
 
             
             if columnSpan < 0:
-              return 15 - self.column - extra_space 
+              return 17 - self.column - extra_space 
 
             return columnSpan 
 
@@ -413,7 +449,7 @@ def get_interface(plot_figure,i=0):
 
                 with open(self.config_file(),"w") as f:
 
-                    json.dump(out, f)
+                    json.dump(out, f, indent=4)
 
 
                 print("Written slider configuration", self.get_combobox("nr_config"))
@@ -507,7 +543,22 @@ def get_interface(plot_figure,i=0):
 
                         f(name, value)
                 
+	# ----------------------------------------- #
+	# ------------ figure output -------------- #
+	# ----------------------------------------- # 
 
+        def refresh_output_figure(self):
+            
+            if not self.get_checkbox("output_figure"):
+                self.output_figure = None 
+
+        def update_output_figure(self,out_fig):
+
+            if self.get_checkbox("output_figure"):
+                self.output_figure = out_fig 
+
+            else:
+                self.output_figure = None 
 
 	# ----------------------------------------- #
 	# -------------- combo box ---------------- #
@@ -726,7 +777,7 @@ def get_interface(plot_figure,i=0):
 
             self.add_text(key="save_path",text="",next_row=False,max_width=False,function=self.update_savebutton,vdiv=False,min_width=True,columnSpan=1)
 
-            self.add_checkbox(function=self.update_savebutton,label="Replace?",key="save_replace",next_row=False,max_width=False,vdiv=False)
+            self.add_checkbox(function=self.update_savebutton,label="Replace",key="save_replace",next_row=False,max_width=False,vdiv=False)
 
             
 
@@ -734,10 +785,11 @@ def get_interface(plot_figure,i=0):
 
 
 
-            self.add_combobox(['No','pdf']+resolutions, label="High res.", key="save_justfig", next_row=False, function=self.update_savebutton,vdiv=False)
+            self.add_combobox(['No','pdf']+resolutions, label="High res.", key="save_highres", next_row=False, function=self.update_savebutton,vdiv=False)
  
+            self.add_checkbox(label="F.out",key="output_figure",next_row=False,max_width=False,vdiv=False,function=self.refresh_output_figure)
 
-#            self.add_button(self.set_savepath_minus,label="Fig.nr --",key="save_decrease",next_row=False,vdiv=True)
+
             self.add_button(self.set_savepath_plus,label="Fig.nr ++",key="save_increase",next_row=False,vdiv=False)
 
             self.set_savepath()
@@ -771,7 +823,7 @@ def get_interface(plot_figure,i=0):
 
             fn = self.get_text("save_path")
 
-            isfiles = any([os.path.exists(fn+e) for e in ["_pyqt.png","_highres.pdf","_highres.png"]])
+            isfiles = any([os.path.exists(fn+e) for e in ["_pyqt.png","_highres.pdf","_highres.png","_outfig.json"]])
 
             replace = self.get_checkbox("save_replace")
 
@@ -799,7 +851,43 @@ def get_interface(plot_figure,i=0):
 
             print("\nFilename:",fn) 
 
-#            isfile = os.path.exists(fn)
+	# ----------------------------------------- #
+	# -------- figure output - json ----------- #
+	# ----------------------------------------- #
+
+            if self.get_checkbox("output_figure"):
+
+                if self.output_figure is None:
+
+                    warnings.warn(" Stored output_figure=None, no json saved. Make sure the function returns data or update plot.")
+
+                else:
+
+                    with open(fn + "_outfig.json", "w") as f: 
+
+                        if isinstance(self.output_figure,dict):
+
+                            self.output_figure.update(init_kwargs)
+
+                        else:
+                            
+                            warnings.warn("Ignored init_kwargs")
+
+                        try: 
+                            json.dump(self.output_figure, f, indent=4, 
+                                    cls=NumpyEncoder)
+
+                            print("Saved json")
+
+                        except Exception as e:
+
+                            warnings.warn("Could not dump json. "+str(e))
+
+
+
+	# ----------------------------------------- #
+	# ------------- screenshot  --------------- #
+	# ----------------------------------------- #
 
             screen = QApplication.primaryScreen()
 
@@ -809,17 +897,17 @@ def get_interface(plot_figure,i=0):
 
             print("Screenshot resolution:",resol_str(S)) 
 
-            screenshot.save(fn+"_pyqt.png",'png')	#,quality=100)
+            screenshot.save(fn+"_pyqt.png",'png')	
             
-          
 
-            justfig = self.get_combobox("save_justfig")
+
+            highres = self.get_combobox("save_highres")
              
-            if justfig != "No": 
+            if highres != "No": 
 
               FN = fn+'_highres'
 
-              if "pdf" in justfig:
+              if "pdf" in highres:
   
                 self.figure.savefig(FN+'.pdf', format='pdf') 
 
@@ -827,7 +915,7 @@ def get_interface(plot_figure,i=0):
 
               else: 
 
-                dpi,S = calc_dpi(self.figure.get_size_inches(), justfig[:-2])
+                dpi,S = calc_dpi(self.figure.get_size_inches(), highres[:-2])
 
                 print(f"Savefig resolution ({dpi}dpi):", resol_str(S))
                        
@@ -839,12 +927,14 @@ def get_interface(plot_figure,i=0):
 
 
 
-              print("Three files saved.\n")
+#              print("Three files saved.\n")
+#
+#            else:
+#
+#              print("File saved.\n")
 
-            else:
-
-              print("File saved.\n")
-
+            print("Files saved.\n")
+            
 #            self.set_savepath()
 
             self.update_savebutton()
@@ -855,9 +945,7 @@ def get_interface(plot_figure,i=0):
 
     main = Window()
 
-
     main.add_functionalities()
-
 
     return app,main
 
@@ -876,12 +964,11 @@ class Figure:
 
   def __init__(self,funfig,nrows=1,ncols=1,tight=True,**kwargs):
 
-
     def funfig_(obj):
  
       fig_, axes = plt.subplots(nrows,ncols,num=obj.figure.number,**kwargs) 
 
-      funfig(obj,fig_,axes)
+      out_funfig = funfig(obj,fig_,axes)
 
       if tight:
 
@@ -891,21 +978,26 @@ class Figure:
 
           fig_.tight_layout(h_pad=0.1,w_pad=0.1) # adjust axis
 
-      return fig_
+      return fig_, out_funfig 
+
+    init_kwargs = {"nr_rc":[nrows,ncols], "tight_layout":tight, }
+
+    for k in ("figsize","sharex","sharey","facecolor","edgecolor"):
+
+      if k in kwargs:
+        init_kwargs[k] = kwargs[k] 
     
-    self.app,self.main = get_interface(funfig_)
+    self.app,self.main = get_interface(funfig_, **init_kwargs)
 
 
   def show(self):  
 
-
     self.main.plot()
-
 
     self.main.show()
 
-
-    sys.exit(self.app.exec_())
+    self.app.exec_()
+    #sys.exit(self.app.exec_()) # not sure if sys.exit needed 
 
     
 
@@ -970,9 +1062,9 @@ if __name__ == '__main__':
 
 #    time.sleep(1.5)
 
+    return {"hello":"world","bye":123}
   
-  
-  fig = Figure(funfig) # initialize figure instance
+  fig = Figure(funfig, sharex=True) # initialize figure instance
   
   
   ks = np.linspace(1.0,3.0,50) # wavevectors
