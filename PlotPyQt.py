@@ -35,16 +35,32 @@ warnings.formatwarning = warning_on_one_line
 
 
 class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj): 
+    """ Custom encoder for numpy data types """
+    def default(self, obj):
+        if isinstance(obj, (np.int_, np.intc, np.intp, np.int8,
+                            np.int16, np.int32, np.int64, np.uint8,
+                            np.uint16, np.uint32, np.uint64,
+                            np.longlong,
+                            )):
 
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-
-        if isinstance(obj, np.int64):
             return int(obj)
 
-        return json.JSONEncoder.default(self, obj) 
+        elif isinstance(obj, (np.float_, np.float16, np.float32, np.float64)):
+            return float(obj)
 
+        elif isinstance(obj, (np.complex_, np.complex64, np.complex128)):
+            return {'real': obj.real, 'imag': obj.imag}
+
+        elif isinstance(obj, (np.ndarray,)):
+            return obj.tolist()
+
+        elif isinstance(obj, (np.bool_)):
+            return bool(obj)
+
+        elif isinstance(obj, (np.void)): 
+            return None
+
+        return json.JSONEncoder.default(self, obj)
 
 
 #===========================================================================#
@@ -130,6 +146,9 @@ def get_interface(plot_figure,i=0,**init_kwargs):
 #            self.button.clicked.connect(self.plot)
             # set the layout
             layout = QGridLayout()
+
+            if "windowtitle" in init_kwargs:
+                self.setWindowTitle(init_kwargs["windowtitle"])
 
             self.row = 1
             self.column = 0
@@ -982,7 +1001,12 @@ class Figure:
 
     init_kwargs = {"nr_rc":[nrows,ncols], "tight_layout":tight, }
 
-    for k in ("figsize","sharex","sharey","facecolor","edgecolor"):
+    for k in ("figsize",
+            "sharex",
+            "sharey",
+            "facecolor",
+            "edgecolor",
+            "windowtitle"):
 
       if k in kwargs:
         init_kwargs[k] = kwargs[k] 
@@ -1064,7 +1088,7 @@ if __name__ == '__main__':
 
     return {"hello":"world","bye":123}
   
-  fig = Figure(funfig, sharex=True) # initialize figure instance
+  fig = Figure(funfig, sharex=True, windowtitle="This is cosine") # initialize figure instance
   
   
   ks = np.linspace(1.0,3.0,50) # wavevectors

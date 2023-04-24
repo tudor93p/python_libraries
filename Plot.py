@@ -28,6 +28,26 @@ from matplotlib.colors import LinearSegmentedColormap
 #
 #
 #---------------------------------------------------------------------------#
+
+def format_panel_title(panel,bigger_fontsize,title,normal_fontsize=None):
+    
+    normal_fontsize = Utils.Assign_Value(normal_fontsize, bigger_fontsize)
+
+    if isinstance(panel,int):
+        panel = chr(ord('a')+panel)
+
+    part1  = r'{\fontsize{'+str(bigger_fontsize)+r'pt}{3em}\selectfont{}('
+    part2 = str(panel) + r')}{\fontsize{'+str(normal_fontsize) 
+    part3 = r'pt}{3em}\selectfont{}'+title 
+
+    return part1+part2+part3 
+
+
+#===========================================================================#
+#
+#
+#
+#---------------------------------------------------------------------------#
     
 def reverse_cmap(cmap):
 
@@ -250,8 +270,15 @@ def prep_ticklab(y, nmax_digits=2):
 
 
     if Utils.NrDigits(y)==0: 
+       
+        s = str(y)
         
-        return str(y).rstrip(".")
+        i = s.find(".")
+
+        return s if i==-1 else s[:i]
+
+
+
 
     s = str(round(y,nmax_digits)).rstrip("0").rstrip(".")
     
@@ -296,7 +323,13 @@ def good_colorbar(plot,vminmax,ax,label=None,digits=2,
 
   if ticks is not None:
 #      cbarticks = np.append(cbarticks,np.setdiff1d(ticks,cbarticks))
-    cbarticks = np.unique(np.append(cbarticks,ticks))
+    ticks_ = np.hstack(ticks) 
+    ticks_ = ticks_[np.logical_and(ticks_>=vminmax[0],ticks_<=vminmax[1])]
+
+    cbarticks = np.unique(np.append(cbarticks,ticks_)) 
+
+
+
 
 
   cbar = ax.get_figure().colorbar(plot,ax=ax,
@@ -308,7 +341,7 @@ def good_colorbar(plot,vminmax,ax,label=None,digits=2,
   n = max(Utils.NrDigits(vmin),Utils.NrDigits(vmax))
     
   cbarticklabels = prep_ticklabs(cbarticks, n)
-
+  
 
   cbar.ax.set_yticklabels(cbarticklabels,**kwargs)
 
