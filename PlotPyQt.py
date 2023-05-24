@@ -452,7 +452,7 @@ def get_interface(plot_figure,i=0,**init_kwargs):
 
                 self.set_checkbox("live_update", live)
            
-                print("Slider configuration,",self.get_combobox("nr_config"),"loaded.")
+                print("Slider configuration",self.get_combobox("nr_config"),"loaded.")
 
 #                print("Slider configuration loaded. Plotting.")
 
