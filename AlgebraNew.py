@@ -260,7 +260,22 @@ def Kronecker(X, symbolic=False, **kwargs):
     return [Kronecker1(PM, kron, x, **kwargs) for x in X]
 
 
+def spWeylRepr(A):
 
+    assert sp.simplify(sp.trace(A))==0
+
+    PM = spPauliMatrices()
+
+    return sp.simplify(sp.Matrix([sp.trace(A@PM[i])/2 for i in [1,2,3]]))
+
+
+def WeylRepr(B):
+    
+    assert np.allclose(np.trace(B),0)
+
+    PM = PauliMatrices()
+
+    return np.array([np.trace(B @ PM[i])/2 for i in [1,2,3]])
   
 
 ##===========================================================================#
@@ -797,7 +812,45 @@ def GramSchmidt(V):
 #
 #
 #
-#
+
+
+"""
+if A == a*B, returns the coefficient of proportionality 'a'
+"""
+def array_prop(A,B,tol=1e-8):
+
+    AB = np.vstack((np.array(A).reshape(-1),np.array(B).reshape(-1)))
+
+    r = Rank(AB) 
+
+    assert 1<=r<=2 
+
+
+    if r==1:
+
+        i = np.abs(AB[0,:])>tol
+
+        alpha = AB[1,i]/AB[0,i]  
+
+        a = alpha[0]
+
+        assert np.allclose(alpha,alpha[0]) 
+
+        return True,a 
+
+    return False,0
+
+
+
+
+
+
+
+
+
+#  flatarrays = np.reshape(array_list,(len(array_list),-1))
+
+
 #
 ##===========================================================================#
 ##
@@ -842,19 +895,22 @@ def GramSchmidt(V):
 ## 
 ##---------------------------------------------------------------------------#
 #
+#===========================================================================#
 #
-#def Rank(M,tol=1e-5):
-#
-#  if sum(np.array(M).shape) == 0:
-#    return 0
-#
-#
-#  s = np.linalg.svd(np.matrix(M),compute_uv=False)
-#
-#  rank = sum( s > max(s)*tol ) 
-#
-#  return rank
-#
+# Rank of a matrix
+# 
+#---------------------------------------------------------------------------#
+
+
+def Rank(M,tol=1e-8):
+
+  if np.array(M).size == 0: return 0
+
+  s = np.linalg.svd(np.matrix(M),compute_uv=False)
+
+  return np.count_nonzero(s > max(tol,np.max(s)*tol))
+
+
 ##===========================================================================#
 ##
 ## Solves a problem similar to root finding (i.e. similar to bisection method)

@@ -2,8 +2,12 @@ import os
 import numpy as np
 from sympy import latex as latex0
 
-def latex(A):
-  return latex0(A,mat_delim='(')
+def latex(A): 
+
+    if isinstance(A,str):
+        return A
+
+    return latex0(A,mat_delim='(')
 
 #begin_subeq = '\n\\begin{subequations}\n' + '\\begin{gather}\n'
 begin_subeq = '\n\\begin{subequations}\n' + '\\begin{align}\n'
@@ -42,6 +46,107 @@ enddoc = '\\end{document}'
 #
 #---------------------------------------------------------------------------#
 
+def mk_Table(T, lines=[[],[]], alignment='', tabcolsep=4,
+    width=None,caption='',label=None,align='t',
+    extrarowheight=None,star=True,
+    fillwidth=False):
+    
+    texout = []
+    
+    hlines,vlines = [np.array(l)-1 for l in lines] 
+    
+    nrows = len(T)
+    ncols = len(T[0])
+    
+    texout.append('')
+
+    
+    texout.append( '\\begin{table'+('*'*star)+'}['+align+']')
+    
+    
+    alignment = list(alignment + 'c'*(ncols-len(alignment))) 
+    
+    
+    for c in np.sort(vlines)[::-1]:
+        alignment[c] += '|'
+
+    if extrarowheight is not None:
+        texout.append( '\setlength{\extrarowheight}{'+str(extrarowheight)+'pt}')
+   
+    if tabcolsep is not None:
+        texout.append( '\setlength{\\tabcolsep}{'+str(tabcolsep)+'pt}')
+
+    texout.append( '\centering') 
+
+
+    if width is not None:
+
+        if not isinstance(width,str):
+
+            width = str(width)
+
+            
+        if '\\' not in width:
+
+            width = width + '\\textwidth' 
+
+
+        texout.append( '\\begin{tabular*}{'+width+'}' + '{' +''.join(alignment)+'}')
+
+
+    else:
+
+        texout.append( '\\begin{tabular}' + '{' +''.join(alignment)+'}')
+
+#    texout.append( '\hline \hline')
+    texout.append( r'\toprule')
+
+
+    for i in range(nrows):
+        texout.append( ' \n& '.join([str(t) for t in T[i] ]) +'\\\\')
+
+        if i==nrows-1:
+            texout.append( r'\bottomrule')
+        else:
+            texout.append( r'\midrule'*sum(hlines==i))
+        #texout.append( '\hline'*sum(hlines==i))
+
+
+#    if nrows-1 not in hlines:
+#        texout.append( r'\bottomrule')
+##        texout.append( '\hline \hline')
+#    else:
+#        texout.append( '\hline')
+
+
+
+
+#    texout.append( +=   '\\\\ \hline \n'.join([' & '.join([str(T[i][j]) for j in range(ncols)]) for i in range(nrows)])
+
+#    texout.append( += '\\\\ \hline'
+
+
+    texout.append('\end{tabular*}' if width is not None else '\end{tabular}')
+
+    texout.append('\caption{'+str(caption)+'}')
+  
+
+    if label is not None: 
+      
+        texout.append('\label{'+label+'}')
+
+    texout.append(' \end{table'+('*'*star)+'}')
+
+    return texout 
+
+
+
+
+#===========================================================================#
+#
+#
+#
+#---------------------------------------------------------------------------#
 
 
 class LaTeX_Document:
@@ -80,6 +185,16 @@ class LaTeX_Document:
       self.Content.append('\\usepackage{ethuebung}')
       self.Content.append(my_comm_pack)
 
+    elif style == 'thesis':
+
+        self.Content.append(r'\documentclass[10pt,a5paper]{book}')
+
+        self.Content.append(r"\usepackage{config/thesis_style}")
+
+
+
+
+
  
     else:
       print('Choose style: aps or notes or ETH.')
@@ -97,20 +212,26 @@ class LaTeX_Document:
 
 
 
+    self.Content.append(preamble)
 
     if graphicspath is not None:
         self.Content.append("\graphicspath{ {"+ graphicspath.rstrip("/") +"/} }")
      
 
-    self.Content.append(preamble)
 
     self.Content.append(begindoc)
     
     
-  def Add_Text(self,ABC):
+  def Add_Text(self,ABC,color=None):
 
-    if type(ABC) == str:
-      self.Content.append(ABC)
+    if isinstance(ABC,str):
+        if isinstance(color,str):
+            self.Content.append(r'\textcolor{'+color+'}{'+ABC+'}')
+
+        else:
+            self.Content.append(ABC)
+    
+
     else:
       print('Please input string if you want to write text.')
 
@@ -121,17 +242,17 @@ class LaTeX_Document:
     else:
       return latex(ABC).replace('$','')
 
-  def Add_Eq(self,ABC):
+  def Add_Eq(self,ABC,**kwargs):
  
     eq = self.list_to_eq(ABC) 
- 
-    self.Add_Text(' '.join([begin_eq,eq,end_eq]))
 
-  def Add_SubEqs(self,ABC):
+    self.Add_Text(' '.join([begin_eq,eq,end_eq]),**kwargs)
+
+  def Add_SubEqs(self,ABC,**kwargs):
 
     eq = '\\\\\n'.join([self.list_to_eq(Eq) for Eq in ABC])
 
-    self.Add_Text(' '.join([begin_subeq,eq,end_subeq]))
+    self.Add_Text(' '.join([begin_subeq,eq,end_subeq]),**kwargs)
 
   def Add_Figure(self,filename,width=0.5,widthunit='\\textwidth',
           caption='',label=None,align='H'):
@@ -162,68 +283,74 @@ class LaTeX_Document:
     self.Add_Text('\\input{'+filename+'}')
 
 
-  def Add_Table(self, T, lines=[[],[]], alignment='', tabcolsep=4,
-          width=None,caption='',label=None,align='t',
-          extrarowheight=4,star=True,
-          fillwidth=False):
+  def Add_Table(self, *args, **kwargs):
+#          T, lines=[[],[]], alignment='', tabcolsep=4,
+#          width=None,caption='',label=None,align='t',
+#          extrarowheight=4,star=True,
+#          fillwidth=False):
 
-    hlines,vlines = [np.array(l)-1 for l in lines]
-    nrows = len(T)
-    ncols = len(T[0])
-    
-    self.Add_Text('')
-    self.Add_Text( '\setlength\extrarowheight{'+str(extrarowheight)+'pt}')
-    self.Add_Text( '\setlength{\\tabcolsep}{'+str(tabcolsep)+'pt}')
-
-    self.Add_Text( '\\begin{table'+('*'*star)+'}['+align+']')
-    
-
-    alignment = list(alignment + 'c'*(ncols-len(alignment))) 
+    for line in mk_Table(*args, **kwargs):
+        self.Add_Text(line)
 
 
-    for c in np.sort(vlines)[::-1]:
-      alignment[c] += '|'
 
-
-    self.Add_Text( '\centering')
-    
-    self.Add_Text(
-        ('\\begin{tabular*}{'+str(width)+'\\textwidth}' if width is not None else '\\begin{tabular}')
-        + '{' +''.join(alignment)+'}')
-
-    self.Add_Text( '\hline \hline')
-
-
-    for i in range(nrows):
-      self.Add_Text( ' \n& '.join([str(t) for t in T[i] ]) +'\\\\')
-
-      for _ in range(sum(hlines==i)):
-        self.Add_Text( '\hline')
-
- 
-    if nrows-1 not in hlines:
-      self.Add_Text( '\hline \hline')
-    else:
-        self.Add_Text( '\hline')
-
-  
-
-
-#  self.Add_Text( +=   '\\\\ \hline \n'.join([' & '.join([str(T[i][j]) for j in range(ncols)]) for i in range(nrows)])
-
-#  self.Add_Text( += '\\\\ \hline'
-
-
-    self.Add_Text('\end{tabular*}' if width is not None else '\end{tabular}')
-
-    self.Add_Text('\caption{'+str(caption)+'}')
-    
-
-    if label != None: 
-        
-        self.Add_Text('\label{'+label+'}')
-
-    self.Add_Text(' \end{table'+('*'*star)+'}')
+#    hlines,vlines = [np.array(l)-1 for l in lines]
+#    nrows = len(T)
+#    ncols = len(T[0])
+#    
+#    self.Add_Text('')
+#    self.Add_Text( '\setlength\extrarowheight{'+str(extrarowheight)+'pt}')
+#    self.Add_Text( '\setlength{\\tabcolsep}{'+str(tabcolsep)+'pt}')
+#
+#    self.Add_Text( '\\begin{table'+('*'*star)+'}['+align+']')
+#    
+#
+#    alignment = list(alignment + 'c'*(ncols-len(alignment))) 
+#
+#
+#    for c in np.sort(vlines)[::-1]:
+#      alignment[c] += '|'
+#
+#
+#    self.Add_Text( '\centering')
+#    
+#    self.Add_Text(
+#        ('\\begin{tabular*}{'+str(width)+'\\textwidth}' if width is not None else '\\begin{tabular}')
+#        + '{' +''.join(alignment)+'}')
+#
+#    self.Add_Text( '\hline \hline')
+#
+#
+#    for i in range(nrows):
+#      self.Add_Text( ' \n& '.join([str(t) for t in T[i] ]) +'\\\\')
+#
+#      for _ in range(sum(hlines==i)):
+#        self.Add_Text( '\hline')
+#
+# 
+#    if nrows-1 not in hlines:
+#      self.Add_Text( '\hline \hline')
+#    else:
+#        self.Add_Text( '\hline')
+#
+#  
+#
+#
+##  self.Add_Text( +=   '\\\\ \hline \n'.join([' & '.join([str(T[i][j]) for j in range(ncols)]) for i in range(nrows)])
+#
+##  self.Add_Text( += '\\\\ \hline'
+#
+#
+#    self.Add_Text('\end{tabular*}' if width is not None else '\end{tabular}')
+#
+#    self.Add_Text('\caption{'+str(caption)+'}')
+#    
+#
+#    if label != None: 
+#        
+#        self.Add_Text('\label{'+label+'}')
+#
+#    self.Add_Text(' \end{table'+('*'*star)+'}')
 
   def NewPage(self):
 
@@ -233,13 +360,37 @@ class LaTeX_Document:
 
     self.Add_Text('\clearpage')
 
+  def Add_Par(self,text):
+
+    self.Add_Text(r'\paragraph{'+text+'}')
+
+
   def Add_Section(self,text,level=0):
 
+    assert level<4
 
-    text_ = '\\'+['','sub','subsub'][level]+'section{'+text+'}'
+    if level<3:
+        self.Add_Text('\\'+('sub'*level)+'section{'+text+'}')
+    
+    else:
+        self.Add_Par(text)
 
-  
-    self.Add_Text(text_)
+    
+
+
+  def Compile(self): 
+
+    print("Compiling PDF...")
+    os.system('pdflatex '+self.filename+' > pdflatex.out')#$ && rm junk.txt')
+
+    print("Compilation successful!")
+
+  def Clean(self):
+#    os.system('pdflatex '+self.filename+' > pdflatex.out')#$ &&  
+
+    os.system('rm pdflatex.out')
+    for ext in ['.aux','.out','.log','.run.xml','-blx.bib']:
+        os.system('rm '+self.filename[:-4]+ext)
 
 
 
@@ -252,11 +403,9 @@ class LaTeX_Document:
     with open(self.filename,'w') as f:
       f.write('%s' % Doc)
 
-    print(f"Wrote content to file \'{self.filename}\'. Compiling PDF...")
+    print(f"Wrote content to file \'{self.filename}\'.")
 
-    os.system('pdflatex '+self.filename+' > junk.txt && rm junk.txt')
-
-    print("Compilation successful!")
+#    self.Compile()
 
 
 

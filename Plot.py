@@ -8,6 +8,7 @@ from scipy.sparse import csc_matrix,linalg as Sla
 import itertools
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.ticker import MultipleLocator
 from matplotlib import rcParams
 
 rcParams['mathtext.fontset'] = 'dejavuserif'
@@ -20,6 +21,9 @@ import Algebra,Utils,Lattices
 color_palette = [turq,pink,blue,red,lblue] = [tuple(np.array(c)/255.) for c in [(126,214,206),(219,190,184),(21,72,112),(163,82,80),(80,126,163)]]
 
 from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.colors
+
+
 
 
 
@@ -29,7 +33,135 @@ from matplotlib.colors import LinearSegmentedColormap
 #
 #---------------------------------------------------------------------------#
 
-def format_panel_title(panel,bigger_fontsize,title,normal_fontsize=None):
+
+def set_mM_ticks(A, base, offset=0, nr_minor=0):
+
+    A.set_major_locator(MultipleLocator(base, offset))
+
+    set_nr_mTicks(A, nr_minor, base=base, offset=offset)
+
+
+def get_offset_Mticks(A):
+
+    mt = A.get_majorticklocs()
+
+    assert len(mt)>=1 
+
+    return mt[0]
+
+
+def get_linbase_Mticks(A):
+
+    mt = A.get_majorticklocs()
+
+    assert len(mt)>=2
+    
+    mtd = np.unique(np.diff(mt))
+    
+    assert len(mtd)==1 
+    
+    return mtd[0] 
+
+
+
+def set_nr_mTicks(A, nr_minor, **kwargs):
+
+    if nr_minor<=0: return 
+
+    if "base" not in kwargs:
+        kwargs["base"] = get_linbase_Mticks(A) 
+
+    if "offset" not in kwargs:
+        kwargs["offset"] = get_offset_Mticks(A)
+   
+
+    kwargs["base"] /= nr_minor +1 
+
+    A.set_minor_locator(MultipleLocator(**kwargs))
+
+def set_xyticks(
+        ax0,
+        xticks=None, xticklabels=None,
+        yticks=None, yticklabels=None,
+        **kwargs
+        ):
+
+    if xticks is not None:
+
+        ax0.set_xticks(xticks)
+
+        if xticklabels is not None:
+
+            ax0.set_xticklabels(xticklabels)
+
+    if yticks is not None:
+
+        ax0.set_yticks(yticks)
+
+        if yticklabels is not None:
+
+            ax0.set_yticklabels(yticklabels)
+    
+
+
+#===========================================================================#
+#
+#
+#
+#---------------------------------------------------------------------------#
+def is_lim_good(lim):
+
+    if lim is not None: 
+    
+        lim1 = np.reshape(lim,-1)
+    
+        if len(lim1)==2:
+            
+            if all([any([isinstance(l,t) for t in [np.int,np.int64,int,float,np.longlong]]) for l in lim1]):
+
+                return True 
+    
+            if not any([l is None for l in lim1]):
+    
+                print("Invalid limit:",i,type(lim1),[type(l) for l in lim1])
+    
+    return False 
+
+
+def plot_levellines(ax, get_line, color="k", lw=1, alpha=0.6, 
+        xlim=None, ylim=None,
+        **kwargs):
+
+    xylim = np.array([xlim if is_lim_good(xlim) else ax.get_xlim(), 
+                ylim if is_lim_good(ylim) else ax.get_ylim()],dtype=float)
+
+    for (i,c) in enumerate("xy"):
+
+        line = get_line(c+"line")
+
+        if line is not None:
+    
+            xy = np.copy(xylim)
+    
+            xy[i,:] = line
+
+            ax.plot(*xy, color=color, lw=lw, alpha=alpha, **kwargs)
+    
+    
+    for (l,f) in zip(xylim, [ax.set_xlim, ax.set_ylim]):
+    
+        f(l)
+
+
+
+
+#===========================================================================#
+#
+#
+#
+#---------------------------------------------------------------------------#
+
+def format_panel_title(panel,bigger_fontsize,title='',normal_fontsize=None):
     
     normal_fontsize = Utils.Assign_Value(normal_fontsize, bigger_fontsize)
 
@@ -261,6 +393,19 @@ def fadeaway_cmap(cmap,minalpha=0,maxalpha=1):
 
     return LinearSegmentedColormap.from_list(name='aux',colors=color_array)
 
+def truncate_colormap(cm_, minval=0.0, maxval=1.0, nrc=100):
+
+    cm = plt.get_cmap(cm_)
+
+    new_cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
+        'trunc({n},{a:.2f},{b:.2f})'.format(n=cm_, a=minval, b=maxval),
+        cm(np.linspace(minval, maxval, nrc)))
+
+    return new_cmap
+
+
+
+
 
 def prep_ticklab(y, nmax_digits=2):
 
@@ -309,7 +454,8 @@ def prep_ticklabs(ticks, nmax_digits=2):
 #---------------------------------------------------------------------------#
 
 def good_colorbar(plot,vminmax,ax,label=None,digits=2,
-        ticks=None,**kwargs):
+        ticks=None,location=None,fontsize=None,rotation=90,
+        labelpad=None,**kwargs):
 
   vmin,vmax = Utils.Round_toMaxOrder(vminmax,digits)
 
@@ -335,7 +481,9 @@ def good_colorbar(plot,vminmax,ax,label=None,digits=2,
   cbar = ax.get_figure().colorbar(plot,ax=ax,
           boundaries=np.linspace(vmin,vmax,100),
           ticks=cbarticks, 
-          drawedges=False)
+          drawedges=False,
+          **kwargs,
+          )
 
 
   n = max(Utils.NrDigits(vmin),Utils.NrDigits(vmax))
@@ -343,11 +491,17 @@ def good_colorbar(plot,vminmax,ax,label=None,digits=2,
   cbarticklabels = prep_ticklabs(cbarticks, n)
   
 
-  cbar.ax.set_yticklabels(cbarticklabels,**kwargs)
+  cbar.ax.set_yticklabels(cbarticklabels,fontsize=fontsize)
+
+  cbar.ax.tick_params(labelsize=fontsize*0.85)
+
 
   if label is not None and len(label):
 
-    cbar.set_label(label, rotation=90, **kwargs)
+    cbar.set_label(label, rotation=rotation, 
+            fontsize=fontsize, 
+            labelpad=labelpad,
+            )
 
 
 
@@ -636,7 +790,8 @@ def get_plot_rUCs(Latt,ns_or_UCs=None):
 #
 #---------------------------------------------------------------------------#
 
-def LDOS(plot_data,ax_fname=None,Latt=None,ns_or_UCs=None,cbarlabs=None,plotmethod="pcolor",vminmax=None,axtitle="",nr_pcolor=250,cmaps=["viridis"],dotsize=60,zorder=0,fontsize=20,axwidth=1.2,dpi=300, show_colorbar=True):
+def LDOS(plot_data,ax_fname=None,Latt=None,ns_or_UCs=None,cbarlabs=None,plotmethod="pcolor",vminmax=None,axtitle="",nr_pcolor=250,cmaps=["viridis"],dotsize=60,zorder=0,fontsize=20,axwidth=1.2,dpi=300, show_colorbar=True,
+        kwargs_colorbar={}):
 
 #):#,bondcols=color_palette,atomsize=50,atomsymb=None,sublattcols=['k','r','b','y'],):
 
@@ -728,6 +883,7 @@ def LDOS(plot_data,ax_fname=None,Latt=None,ns_or_UCs=None,cbarlabs=None,plotmeth
 
         cbar = good_colorbar(plot, [vmin,vmax], ax, label = title,
                     fontsize = fontsize,
+                    **kwargs_colorbar,
                 )
 
 

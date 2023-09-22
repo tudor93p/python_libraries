@@ -270,7 +270,7 @@ def get_interface(plot_figure,i=0,**init_kwargs):
         def Vdiv(self):
             div = QtWidgets.QLabel("")
             div.setStyleSheet("QLabel {background-color: #3e3e3e; padding: 0; margin: 0; border-bottom: 1 solid #666; border-top: 1 solid #2a2a2a;}")
-            div.setMaximumWidth(2.5)
+            div.setMaximumWidth(3)#2.5)
         
             return div
 
@@ -449,6 +449,8 @@ def get_interface(plot_figure,i=0,**init_kwargs):
                 self.set_checkbox("live_update", False)
            
                 self.set_config(self.read_config())
+
+                self.update_savebutton()
 
                 self.set_checkbox("live_update", live)
            
